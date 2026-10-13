@@ -22,8 +22,37 @@ A small backlog for building the [plan](plan.md) with a Django backend instead o
 | 10 | Docker compose with Django | 1–2 | S |
 | 11 | CI and deployment | 5 | M |
 | 12 | MCP server on the Django API | 6 | M |
+| 13 | Integration tests | 3, 5 | M |
+| 14 | Rest of the agent extension pack | 6 | M |
+| 15 | Security scans and PR audit | 7 | M |
+| 16 | Ops diagnosis and AI tool/data policy | 7 | S |
+| 17 | AI workflow log | 1–8 | S |
+| 18 | README and end-to-end run | 8 | S |
 
 S = half a day or less, M = about a day.
+
+## Rubric coverage
+
+Which tasks earn each course rubric criterion.
+
+| Criterion | Tasks |
+| --- | --- |
+| 1. Problem description | 18 |
+| 2. AI-assisted workflow | 17 |
+| 3. Technologies and architecture | 18 |
+| 4. Frontend (with tests) | Existing React app and tests; run instructions in 18 |
+| 5. API contract | 9 |
+| 6. Backend (with tests) | 3–7 |
+| 7. Database integration | 1, 2, 18 |
+| 8. Containerization | 10 |
+| 9. Integration tests | 13 |
+| 10. Deployment | 11 |
+| 11. CI/CD | 11, 13 |
+| 12. Agent extension pack | 12, 14 |
+| 13. Security, audit and DevOps | 15, 16 |
+| 14. Reproducibility | 10, 18 |
+
+Peer reviews are also required for points but aren't repo work, so they're tracked outside this backlog.
 
 ## Tasks
 
@@ -83,11 +112,67 @@ Create `backend/` with a `stepboard` project and a `leaderboard` app.
 ### 11. CI and deployment
 - GitHub Actions runs the backend tests (pytest) and the frontend tests and build, then deploys `main` when all of them pass.
 - Pick the cloud host (an open question in the plan) and use Postgres from that host.
-- **Done when:** a push to `main` gets tested and deployed, and the deployed app shows the demo family.
+- **Done when:** a push to `main` gets tested and deployed, the deployed app shows the demo family, and the README links to the working URL.
 
 ### 12. MCP server on the Django API
 - `mcp-server/` offers `get_leaderboard` and `log_steps`, and calls only the public API.
 - **Done when:** an assistant can answer "who's winning this week?" and log steps for a member.
+
+### 13. Integration tests
+- Keep unit tests (`tests/unit/`: ranking, callouts, validation) separate from integration tests (`tests/integration/`), each runnable on its own: `pytest tests/unit`, `pytest tests/integration`.
+- Integration tests go through the HTTP API against a real Postgres database and cover the key workflows:
+  - seed, then read both boards
+  - join with `DEMO`, log steps, and see the weekly board change
+  - log the same day twice and keep only the newer total
+  - send a digest with the Discord webhook mocked, then find it under Messages
+- CI runs them against a Postgres service container.
+- **Done when:** both suites pass in CI, and the README explains what each one covers and how to run it.
+
+### 14. Rest of the agent extension pack
+Builds on `AGENTS.md` and the MCP server from task 12.
+- **Reusable workflow** in `agent-capabilities/`: for example, "add an API endpoint", which updates `openapi.yaml`, then the view and serializer, then the tests, then runs the contract test.
+- **Specialist agent** in `custom-agent/`: for example, a leaderboard-rules reviewer that checks changes against `product-spec.md`.
+- **Hook or guardrail** in `agent-hooks/`: for example, run the contract test whenever `openapi.yaml` or `urls.py` changes, and block edits to `.env`.
+- **`docs/permissions.md`**: what each agent and tool may read, run and change, and why.
+- **`docs/agent-extension-pack.md`**: what each piece is, how to install it, and an example of each one in use.
+- **Done when:** every piece is in the repo and documented, and the hook has been shown to block a real mistake.
+
+### 15. Security scans and PR audit
+- Run deterministic scanners and save their output in `security/`:
+  - Bandit (Python code)
+  - pip-audit and npm audit (dependencies)
+  - gitleaks (secrets)
+  - Trivy (Docker images)
+- Write `security/findings.md`: each finding, whether it was fixed or accepted, and why.
+- Run an AI-assisted audit on a real pull request and save the output, plus what you changed because of it.
+- Add security notes on the agent extension pack: what the MCP server can do, prompt-injection risks, and secrets handling.
+- Add the scanners to CI where they're quick.
+- **Done when:** `security/` holds the scan outputs, the PR audit and the notes, and every high-severity finding is fixed or explained.
+
+### 16. Ops diagnosis and AI tool/data policy
+- **`ops/`**: diagnose the running deployment (health check, logs, a planned failure such as stopping the database or setting a bad webhook URL) with the course's DevOps tools. Save the output and a short runbook.
+- **`security/ai-policy.md`**: which AI tools are allowed, what data may be shared with them (no `.env`, no real family data), and when a person must review the work.
+- **Done when:** `ops/` holds real diagnosis output and the runbook, and the policy is linked from the README.
+
+### 17. AI workflow log
+- Keep `docs/ai-workflow.md` up to date as you build:
+  - tools used and what each was for
+  - context files (`AGENTS.md`, `plan.md`, `product-spec.md`, `openapi.yaml`)
+  - sample prompts and delegated tasks
+  - what you reviewed by hand, what you rejected or fixed, and how you verified changes (tests, contract test, smoke runs)
+- **Done when:** each plan day has an entry with at least one real prompt and how its result was reviewed.
+
+### 18. README and end-to-end run
+- Rewrite the README for the Django version:
+  - the problem and what the app does
+  - an architecture section covering how the frontend, backend, database, Docker and CI/CD fit together
+  - the database setup for each environment
+  - how to set up, run, test (unit, integration and frontend) and deploy
+  - the deployed URL
+  - links to the extension pack, `security/` and `ops/`
+- Update `AGENTS.md` for the Django layout and commands.
+- Follow the README from a fresh clone on a clean machine and fix anything that doesn't work.
+- **Done when:** someone else can go from clone to a running, tested app using only the README.
 
 ## Out of scope for this backlog
 
