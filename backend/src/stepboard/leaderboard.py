@@ -26,6 +26,14 @@ class Standing:
     def step_change(self) -> int | None:
         return None if self.prev_steps is None else self.steps - self.prev_steps
 
+    @property
+    def medal(self) -> str | None:
+        return medal_for(self.rank)
+
+
+def medal_for(rank: int) -> str | None:
+    return MEDALS[rank - 1] if rank <= len(MEDALS) else None
+
 
 def week_start(day: date) -> date:
     """Monday of the week containing day."""
@@ -33,7 +41,9 @@ def week_start(day: date) -> date:
 
 
 def format_range(start: date, end: date) -> str:
-    """'Oct 5–11', or 'Sep 29–Oct 5' across months."""
+    """'Oct 5–11', 'Sep 29–Oct 5' across months, or 'Oct 5' for a single day."""
+    if start == end:
+        return f"{start:%b} {start.day}"
     if (start.year, start.month) == (end.year, end.month):
         return f"{start:%b} {start.day}–{end.day}"
     return f"{start:%b} {start.day}–{end:%b} {end.day}"
@@ -58,7 +68,7 @@ def build_standings(
 ) -> list[Standing]:
     """Rank every member for the current period, with movement against the previous one.
 
-    previous is None when there is no previous period (before launch day). A member
+    previous is None when there is no previous period (before the start date). A member
     missing from previous shows as new.
     """
     totals = {member_id: current.get(member_id, 0) for member_id in names}
@@ -112,7 +122,7 @@ def format_board(
     if not standings:
         lines.append("No one has joined yet.")
     for s in standings:
-        label = MEDALS[s.rank - 1] if s.rank <= len(MEDALS) else f"{s.rank}."
+        label = medal_for(s.rank) or f"{s.rank}."
         change = _change_text(s) if show_change else ""
         lines.append(f"{label} {s.name} — {s.steps:,}{change}")
     if callouts:

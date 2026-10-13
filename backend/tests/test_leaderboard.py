@@ -22,6 +22,7 @@ def test_week_start_is_monday():
 def test_format_range():
     assert format_range(date(2026, 10, 5), date(2026, 10, 11)) == "Oct 5–11"
     assert format_range(date(2026, 9, 28), date(2026, 10, 4)) == "Sep 28–Oct 4"
+    assert format_range(date(2026, 10, 12), date(2026, 10, 12)) == "Oct 12"
 
 
 def test_ties_share_a_rank():

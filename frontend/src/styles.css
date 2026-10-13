@@ -1,0 +1,137 @@
+:root {
+  --bg: #f7f7f5;
+  --card: #ffffff;
+  --text: #1f2328;
+  --muted: #656d76;
+  --accent: #2563eb;
+  --up: #15803d;
+  --down: #b91c1c;
+  --border: #e5e7eb;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.6rem;
+}
+
+.whoami,
+.hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+nav,
+.toggle,
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  margin: 1rem 0;
+}
+
+button {
+  font: inherit;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  cursor: pointer;
+}
+
+button.active,
+button[type='submit'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+button.link {
+  border: none;
+  background: none;
+  color: var(--accent);
+  padding: 0;
+  text-decoration: underline;
+}
+
+input,
+select {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+main section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td {
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+td.rank {
+  width: 2.5rem;
+  font-size: 1.3rem;
+}
+
+td.steps {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.change {
+  margin-left: 0.75rem;
+  color: var(--muted);
+}
+
+.change.up {
+  color: var(--up);
+}
+
+.change.down {
+  color: var(--down);
+}
+
+.callouts {
+  list-style: none;
+  padding: 0;
+}
+
+.message pre {
+  white-space: pre-wrap;
+  background: var(--bg);
+  padding: 0.75rem;
+  border-radius: 6px;
+}
+
+.error {
+  color: var(--down);
+}
+
+.ok {
+  color: var(--up);
+}

@@ -1,36 +1,71 @@
 # Family Step Leaderboard
 
-A Discord bot that tracks family members' daily steps and posts weekly and all-time leaderboards. See [docs/path.md](docs/path.md) for the design plan.
+A web app where a family logs daily steps and competes on a weekly board (Monday–Sunday) and an all-time board. It builds weekly and monthly digests, shows them in the app, and posts them to Discord when a webhook is configured.
 
-Current status: **phase 1** (core bot, SQLite, `/log`, `/leaderboard`).
+- Design and schedule: [docs/plan.md](docs/plan.md)
+- Behavior and acceptance criteria: [product-spec.md](product-spec.md)
+- API contract: [openapi.yaml](openapi.yaml)
+- Notes for AI coding agents: [AGENTS.md](AGENTS.md)
 
-## Set up the Discord bot
+## Run it
 
-1. Create an application at <https://discord.com/developers/applications>, open the **Bot** tab, and copy the token.
-2. Under **OAuth2 → URL Generator**, select the `bot` and `applications.commands` scopes and the **Send Messages** permission. Open the generated URL to add the bot to the family server.
-3. Turn on Developer Mode in Discord (Settings → Advanced), then right-click the server and choose **Copy Server ID**.
-
-## Run locally
+You only need Docker.
 
 ```sh
-python -m venv .venv
-.venv/Scripts/activate        # Windows; use .venv/bin/activate on macOS/Linux
-pip install -e ".[dev]"
-cp .env.example .env          # then fill in the token, server ID, and launch day
-python -m stepboard
+docker compose up --build
 ```
 
-The web endpoint runs at `http://localhost:8000/health`.
+- App: <http://localhost:8080>
+- API docs: <http://localhost:8000/docs>
 
-## Commands
+The Demo Family comes preloaded with about four weeks of steps, so the boards are filled on first load.
 
-| Command | What it does |
-| --- | --- |
-| `/log <steps> [day]` | Record steps by hand for `today` (the default), `yesterday`, or `YYYY-MM-DD` |
-| `/leaderboard [week \| all-time]` | Show this week's standings so far, or the all-time totals |
+## Try it as a reviewer
+
+1. Open <http://localhost:8080>. The demo family's weekly board is showing; switch to **All-time** to see the totals.
+2. Go to **Join or create**, enter invite code `DEMO` and your name, then **Join**.
+3. On **Log steps**, enter a big number for today and save. Check the leaderboard to see your rank.
+4. Open **Messages** and choose **Send weekly digest now**.
+
+## Discord (optional)
+
+Without setup, digests appear only on the Messages page. To also post them to a channel, create a webhook (Channel settings → Integrations → Webhooks), then:
+
+```sh
+cp .env.example .env    # set DISCORD_WEBHOOK_URL
+docker compose up --build
+```
+
+## Develop without Docker
+
+```sh
+# Backend: http://localhost:8000, using a local SQLite file
+cd backend
+python -m venv .venv && .venv/Scripts/activate     # macOS/Linux: source .venv/bin/activate
+pip install -e ".[dev]"
+python -m stepboard.seed
+uvicorn stepboard.api:create_app --factory --reload
+
+# Frontend: http://localhost:5173, sends /api to the backend
+cd frontend
+npm install
+npm run dev
+```
 
 ## Tests
 
 ```sh
-pytest
+cd backend && pytest
+cd frontend && npm test
 ```
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `backend/` | FastAPI app, database models, leaderboard logic, seed script, scheduler |
+| `frontend/` | React app with one central API client (`src/api.js`) |
+| `.github/workflows/` | CI |
+| `docs/` | Design plan, agent extension pack, permissions |
+| `security/`, `ops/` | Security scans and ops notes (day 7) |
+| `agent-capabilities/`, `agent-hooks/`, `mcp-server/`, `custom-agent/` | Agent extension pack (day 6) |
