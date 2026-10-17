@@ -64,6 +64,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'stepboard.urls'
 
+# openapi.yaml paths have no trailing slash (/health, /families), so don't redirect to one.
+APPEND_SLASH = False
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
