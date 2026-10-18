@@ -53,7 +53,11 @@ class StepEntry(models.Model):
             # One total per member per day: logging the day again replaces it (update_or_create).
             models.UniqueConstraint(fields=["member", "day"], name="one_entry_per_member_day"),
             # PositiveIntegerField already blocks negatives; this caps the top of the 0–100,000 range.
-            models.CheckConstraint(condition=models.Q(steps__lte=100_000), name="steps_at_most_100000"),
+            models.CheckConstraint(
+                condition=models.Q(steps__lte=100_000),
+                name="steps_at_most_100000",
+                violation_error_message="Steps must be 100,000 or fewer.",
+            ),
         ]
 
     def __str__(self) -> str:
