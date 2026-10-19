@@ -132,6 +132,7 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/StepEntry" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /steps:
     post:
@@ -174,6 +175,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Leaderboard" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /families/{family_id}/leaderboards/all-time:
     parameters:
@@ -190,6 +192,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Leaderboard" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /families/{family_id}/messages:
     parameters:
@@ -242,7 +245,7 @@ components:
       name: as_of
       in: query
       required: false
-      description: Last day to count (default today, Eastern)
+      description: Last day to count, YYYY-MM-DD (default today, Eastern). A bad date is a 422.
       schema: { type: string, format: date }
 
   responses:
