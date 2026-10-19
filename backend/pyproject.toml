@@ -7,6 +7,7 @@ dependencies = [
     "django>=6.1,<6.2",
     "djangorestframework>=3.16",
     "dj-database-url>=3.0",
+    "httpx>=0.27",  # the one request that posts a digest to a Discord webhook
     "psycopg[binary]>=3.2",  # Postgres driver, used when DATABASE_URL points at Postgres
     "python-dotenv>=1.0",
     "tzdata",  # zoneinfo data on Windows and slim images
