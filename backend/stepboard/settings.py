@@ -38,6 +38,20 @@ ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "loca
 # Optional. Without it, digests appear only on the in-app Messages page.
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL") or None
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"plain": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    "loggers": {
+        "leaderboard": {"handlers": ["console"], "level": "INFO"},  # digests, Discord failures, the scheduler
+        "apscheduler": {"handlers": ["console"], "level": "INFO"},
+        # httpx logs every request with its full URL at INFO; for Discord that URL is the webhook secret.
+        "httpx": {"level": "WARNING"},
+        "httpcore": {"level": "WARNING"},
+    },
+}
+
 REST_FRAMEWORK = {
     # The API has no logins (families join by invite code), so no authentication. This also
     # stops DRF's session auth from demanding CSRF tokens when the browser is logged into the admin.
