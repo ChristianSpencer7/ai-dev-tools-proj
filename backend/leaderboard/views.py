@@ -14,6 +14,7 @@ from leaderboard.serializers import (
     JoinRequestSerializer,
     MemberSerializer,
     StepEntrySerializer,
+    StepHistoryQuerySerializer,
     StepsImportSerializer,
 )
 
@@ -97,3 +98,17 @@ def log_steps(request: Request) -> Response:
             for entry in data["entries"]
         ]
     return Response(StepEntrySerializer(saved, many=True).data)
+
+
+@api_view(["GET"])
+def member_steps(request: Request, member_id: int) -> Response:
+    """A member's daily totals from `from` through `to`, newest first (StepEntry.Meta.ordering).
+
+    Defaults to the last 14 days ending today, Eastern. An unknown member is a 404 before the dates are checked.
+    """
+    member = get_member(member_id)
+    query = StepHistoryQuerySerializer(data=request.query_params)
+    query.is_valid(raise_exception=True)
+    days = query.validated_data
+    entries = member.steps.filter(day__range=(days["from"], days["to"]))
+    return Response(StepEntrySerializer(entries, many=True).data)
