@@ -1,5 +1,9 @@
+# Only what the image needs: pyproject.toml, manage.py, stepboard/ and leaderboard/.
 tests/
-**/__pycache__/
-**/*.egg-info/
+staticfiles/
+db.sqlite3
 *.db
 .env
+.pytest_cache/
+**/__pycache__/
+**/*.egg-info/
