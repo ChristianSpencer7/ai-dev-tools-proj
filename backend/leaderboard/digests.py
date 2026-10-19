@@ -19,4 +19,6 @@ def send_digest(family: Family, kind: str, as_of: date) -> Message:
     post_to_discord never raises, so the message is saved whatever happens with Discord.
     """
     text = BOARD_FOR_KIND[kind](family, as_of).text()
-    return Message.objects.create(family=family, kind=kind, text=text, discord_status=post_to_discord(text))
+    return Message.objects.create(
+        family=family, kind=kind, as_of=as_of, text=text, discord_status=post_to_discord(text)
+    )

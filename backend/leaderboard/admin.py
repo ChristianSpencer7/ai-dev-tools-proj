@@ -38,7 +38,7 @@ class StepEntryAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ["__str__", "kind", "discord_status", "created_at"]
+    list_display = ["__str__", "kind", "as_of", "discord_status", "created_at"]
     list_filter = ["family", "kind", "discord_status"]
     readonly_fields = ["created_at"]
     list_select_related = ["family"]

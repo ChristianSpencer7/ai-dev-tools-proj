@@ -78,6 +78,9 @@ class Message(models.Model):
     kind = models.CharField(max_length=16, choices=Kind.choices)
     text = models.TextField()
     discord_status = models.CharField(max_length=16, choices=DiscordStatus.choices)
+    # Last day the digest counted. Internal (not in the API): lets send_digests skip a family that already
+    # has this digest. Null for messages saved before it was added.
+    as_of = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
