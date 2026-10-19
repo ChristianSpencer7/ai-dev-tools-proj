@@ -1,4 +1,4 @@
-from django.db import connection
+from django.db import connection, transaction
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import NotFound
@@ -6,13 +6,15 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from leaderboard.invites import unique_invite_code
-from leaderboard.models import Family, Member
+from leaderboard.models import Family, Member, StepEntry
 from leaderboard.serializers import (
     FamilyCreateSerializer,
     FamilySerializer,
     FamilySummarySerializer,
     JoinRequestSerializer,
     MemberSerializer,
+    StepEntrySerializer,
+    StepsImportSerializer,
 )
 
 
@@ -21,6 +23,13 @@ def get_family(family_id: int) -> Family:
         return Family.objects.get(pk=family_id)
     except Family.DoesNotExist:
         raise NotFound("Family not found")
+
+
+def get_member(member_id: int) -> Member:
+    try:
+        return Member.objects.get(pk=member_id)
+    except Member.DoesNotExist:
+        raise NotFound("Member not found")
 
 
 @api_view(["GET"])
@@ -65,3 +74,26 @@ def join_family(request: Request) -> Response:
         raise NotFound("No family has that invite code")
     member = Member.objects.create(family=family, name=serializer.validated_data["name"])
     return Response(MemberSerializer(member).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+def log_steps(request: Request) -> Response:
+    """Records daily totals. Logging a day again replaces its total; a bad request saves nothing.
+
+    Returns 200, not 201, because a request can update existing entries as well as create new ones.
+    """
+    serializer = StepsImportSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)  # every entry is checked before anything is saved
+    data = serializer.validated_data
+    member = get_member(data["member_id"])
+
+    with transaction.atomic():
+        saved = [
+            StepEntry.objects.update_or_create(
+                member=member,
+                day=entry["day"],
+                defaults={"steps": entry["steps"], "source": data["source"]},
+            )[0]
+            for entry in data["entries"]
+        ]
+    return Response(StepEntrySerializer(saved, many=True).data)
