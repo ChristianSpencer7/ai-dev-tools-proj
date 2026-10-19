@@ -118,3 +118,40 @@ class StepHistoryQuerySerializer(serializers.Serializer):
 
 def format_days(days) -> str:
     return ", ".join(day.isoformat() for day in days)
+
+
+class StandingSerializer(serializers.Serializer):
+    """Standing: one row of a leaderboard. Reads a ranking.Standing; medal and step_change are its properties."""
+
+    member_id = serializers.IntegerField()
+    name = serializers.CharField()
+    steps = serializers.IntegerField()
+    rank = serializers.IntegerField()  # ties share a rank: 1, 1, 3
+    medal = serializers.CharField(allow_null=True)  # 🥇🥈🥉 for ranks 1–3, else null
+    prev_rank = serializers.IntegerField(allow_null=True)  # null when the member is new
+    step_change = serializers.IntegerField(allow_null=True)
+
+
+class CalloutSerializer(serializers.Serializer):
+    """Callout: a line such as best single day or most improved."""
+
+    kind = serializers.CharField()
+    text = serializers.CharField()
+
+
+class LeaderboardSerializer(serializers.Serializer):
+    """Leaderboard: a whole weekly or all-time board (boards.Board). Response only."""
+
+    kind = serializers.CharField()
+    title = serializers.CharField()
+    start = serializers.DateField()
+    end = serializers.DateField()
+    has_comparison = serializers.BooleanField()
+    standings = StandingSerializer(many=True)
+    callouts = CalloutSerializer(many=True)
+
+
+class AsOfQuerySerializer(serializers.Serializer):
+    """The as_of query parameter of the leaderboard endpoints: the last day to count, default today (Eastern)."""
+
+    as_of = serializers.DateField(default=today_eastern)
