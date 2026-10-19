@@ -5,7 +5,7 @@ from datetime import timedelta
 from rest_framework import serializers
 
 from leaderboard.dates import today_eastern
-from leaderboard.models import Family, Member, StepEntry
+from leaderboard.models import Family, Member, Message, StepEntry
 
 MAX_DAILY_STEPS = 100_000
 MAX_ENTRIES_PER_REQUEST = 366  # a year of days, enough for any import or backfill
@@ -155,3 +155,20 @@ class AsOfQuerySerializer(serializers.Serializer):
     """The as_of query parameter of the leaderboard endpoints: the last day to count, default today (Eastern)."""
 
     as_of = serializers.DateField(default=today_eastern)
+
+
+class DigestRequestSerializer(serializers.Serializer):
+    """DigestRequest: the body of POST /families/{id}/digests."""
+
+    kind = serializers.ChoiceField(choices=Message.Kind.choices)  # weekly, or monthly (all-time totals)
+    as_of = serializers.DateField(default=today_eastern)  # last day to count; default today, Eastern
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    """Message: a saved digest, as shown on the Messages page."""
+
+    family_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Message
+        fields = ["id", "family_id", "kind", "text", "created_at", "discord_status"]
