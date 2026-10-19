@@ -6,16 +6,19 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from leaderboard.boards import alltime_board, weekly_board
+from leaderboard.digests import send_digest
 from leaderboard.invites import unique_invite_code
 from leaderboard.models import Family, Member, StepEntry
 from leaderboard.serializers import (
     AsOfQuerySerializer,
+    DigestRequestSerializer,
     FamilyCreateSerializer,
     FamilySerializer,
     FamilySummarySerializer,
     JoinRequestSerializer,
     LeaderboardSerializer,
     MemberSerializer,
+    MessageSerializer,
     StepEntrySerializer,
     StepHistoryQuerySerializer,
     StepsImportSerializer,
@@ -135,3 +138,23 @@ def weekly_leaderboard(request: Request, family_id: int) -> Response:
 def alltime_leaderboard(request: Request, family_id: int) -> Response:
     """Everything from the family's start date through as_of."""
     return leaderboard_response(request, family_id, alltime_board)
+
+
+@api_view(["GET"])
+def family_messages(request: Request, family_id: int) -> Response:
+    """The family's saved digests, newest first (Message.Meta.ordering)."""
+    family = get_family(family_id)
+    return Response(MessageSerializer(family.messages.all(), many=True).data)
+
+
+@api_view(["POST"])
+def create_digest(request: Request, family_id: int) -> Response:
+    """Builds a weekly or monthly digest, posts it to Discord if a webhook is set, and saves it.
+
+    Used by the app's "Send digest now" (as_of defaults to today) and by the scheduler (task 8).
+    """
+    family = get_family(family_id)
+    serializer = DigestRequestSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    message = send_digest(family, serializer.validated_data["kind"], serializer.validated_data["as_of"])
+    return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
