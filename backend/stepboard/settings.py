@@ -59,6 +59,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     # Validation errors as 422 {"detail": "..."}, as openapi.yaml and the React API client expect.
     "EXCEPTION_HANDLER": "leaderboard.exceptions.api_exception_handler",
+    # Lets drf-spectacular list every route, so tests/test_contract.py can compare them with openapi.yaml.
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 
@@ -72,6 +74,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',  # schema generation for the openapi.yaml contract test
     'leaderboard',
 ]
 
