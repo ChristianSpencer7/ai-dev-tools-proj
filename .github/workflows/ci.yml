@@ -60,6 +60,16 @@ jobs:
         run: python manage.py makemigrations --check --dry-run
       - name: Tests (including the openapi.yaml contract tests)
         run: pytest
+      - name: Production settings pass Django's deployment checks
+        if: matrix.database == 'postgres'
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_HTTPS: "1"
+          DJANGO_ALLOWED_HOSTS: stepboard.example.com
+          DJANGO_CSRF_TRUSTED_ORIGINS: https://stepboard.example.com
+        run: |
+          export DJANGO_SECRET_KEY="$(python -c 'from django.core.management.utils import get_random_secret_key as k; print(k())')"
+          python manage.py check --deploy --fail-level WARNING
 
   frontend:
     name: Frontend

@@ -15,6 +15,9 @@ x-django: &django
     # "backend" is how the frontend container and the health check reach it.
     DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
     DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+    # Deployment only, behind an HTTPS proxy: HTTPS redirects, secure cookies, HSTS. Off on a laptop.
+    DJANGO_HTTPS: ${DJANGO_HTTPS:-}
+    DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
 
 services:
   db:

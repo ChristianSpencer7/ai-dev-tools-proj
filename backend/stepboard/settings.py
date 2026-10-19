@@ -38,6 +38,30 @@ ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "loca
 # Optional. Without it, digests appear only on the in-app Messages page.
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL") or None
 
+
+def env_list(name: str) -> list[str]:
+    return [item.strip() for item in os.environ.get(name, "").split(",") if item.strip()]
+
+
+# Origins allowed to submit forms, such as the admin login over HTTPS: "https://stepboard.example.com".
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+
+# HTTPS-only protections, for a deployment behind an HTTPS proxy (Caddy) that sets X-Forwarded-Proto.
+# Off by default: docker compose on a laptop runs with DEBUG off but over plain HTTP.
+if os.environ.get("DJANGO_HTTPS") == "1":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # trust the proxy's "this came in over HTTPS"
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Browsers remember to use HTTPS. A day to start with; raise it once the deployment is settled.
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", 86_400))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# The container's health check calls http://localhost:8000/health directly, without the proxy.
+SECURE_REDIRECT_EXEMPT = [r"^health$"]
+# HSTS preload is a hard-to-undo promise to browser makers that the domain and every subdomain will only ever use
+# HTTPS. Not something this project should commit to, so `check --deploy` shouldn't ask for it.
+SILENCED_SYSTEM_CHECKS = ["security.W021"]
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -51,6 +75,9 @@ LOGGING = {
         "httpcore": {"level": "WARNING"},
     },
 }
+
+# tests/test_contract.py already checks the generated schema; `check --deploy` needn't regenerate it.
+SPECTACULAR_SETTINGS = {"ENABLE_DJANGO_DEPLOY_CHECK": False}
 
 REST_FRAMEWORK = {
     # The API has no logins (families join by invite code), so no authentication. This also
@@ -169,12 +196,3 @@ STORAGES = {
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
 }
 
-
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
