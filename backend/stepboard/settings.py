@@ -38,6 +38,15 @@ ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "loca
 # Optional. Without it, digests appear only on the in-app Messages page.
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL") or None
 
+REST_FRAMEWORK = {
+    # The API has no logins (families join by invite code), so no authentication. This also
+    # stops DRF's session auth from demanding CSRF tokens when the browser is logged into the admin.
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    # Validation errors as 422 {"detail": "..."}, as openapi.yaml and the React API client expect.
+    "EXCEPTION_HANDLER": "leaderboard.exceptions.api_exception_handler",
+}
+
 
 # Application definition
 
