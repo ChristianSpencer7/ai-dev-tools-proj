@@ -5,13 +5,16 @@ from rest_framework.exceptions import NotFound
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from leaderboard.boards import alltime_board, weekly_board
 from leaderboard.invites import unique_invite_code
 from leaderboard.models import Family, Member, StepEntry
 from leaderboard.serializers import (
+    AsOfQuerySerializer,
     FamilyCreateSerializer,
     FamilySerializer,
     FamilySummarySerializer,
     JoinRequestSerializer,
+    LeaderboardSerializer,
     MemberSerializer,
     StepEntrySerializer,
     StepHistoryQuerySerializer,
@@ -112,3 +115,23 @@ def member_steps(request: Request, member_id: int) -> Response:
     days = query.validated_data
     entries = member.steps.filter(day__range=(days["from"], days["to"]))
     return Response(StepEntrySerializer(entries, many=True).data)
+
+
+def leaderboard_response(request: Request, family_id: int, build_board) -> Response:
+    """Shared by both boards: 404 for an unknown family first, then 422 for a bad as_of."""
+    family = get_family(family_id)
+    query = AsOfQuerySerializer(data=request.query_params)
+    query.is_valid(raise_exception=True)
+    return Response(LeaderboardSerializer(build_board(family, query.validated_data["as_of"])).data)
+
+
+@api_view(["GET"])
+def weekly_leaderboard(request: Request, family_id: int) -> Response:
+    """The week (Monday–Sunday) containing as_of, counted through as_of."""
+    return leaderboard_response(request, family_id, weekly_board)
+
+
+@api_view(["GET"])
+def alltime_leaderboard(request: Request, family_id: int) -> Response:
+    """Everything from the family's start date through as_of."""
+    return leaderboard_response(request, family_id, alltime_board)
