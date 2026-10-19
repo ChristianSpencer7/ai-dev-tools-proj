@@ -9,10 +9,12 @@ dependencies = [
     "drf-spectacular>=0.28",  # generates the backend's schema for the openapi.yaml contract test
     "apscheduler>=3.10,<4",  # run_scheduler: Monday and monthly digests; version 4 has a different API
     "dj-database-url>=3.0",
+    "gunicorn>=23",  # serves the app in Docker (Linux only; locally use runserver)
     "httpx>=0.27",  # the one request that posts a digest to a Discord webhook
     "psycopg[binary]>=3.2",  # Postgres driver, used when DATABASE_URL points at Postgres
     "python-dotenv>=1.0",
     "tzdata",  # zoneinfo data on Windows and slim images
+    "whitenoise>=6.7",  # serves the admin's and DRF's CSS and JavaScript when DEBUG is off
 ]
 
 [project.optional-dependencies]
