@@ -1,13 +1,49 @@
 name: CI
 
+# Every push and every pull request into main runs all checks.
 on:
   push:
-    branches: [main]
   pull_request:
+    branches: [main]
+
+# A newer push to the same branch cancels the older, still-running checks.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   backend:
+    name: Backend (${{ matrix.database }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # SQLite is what tests and local runs use by default; Postgres is what docker compose and production use.
+        include:
+          - database: sqlite
+            database_url: sqlite:///db.sqlite3
+          - database: postgres
+            database_url: postgres://stepboard:stepboard@localhost:5432/stepboard
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: stepboard
+          POSTGRES_PASSWORD: stepboard
+          POSTGRES_DB: stepboard
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stepboard"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      DATABASE_URL: ${{ matrix.database_url }}
     defaults:
       run:
         working-directory: backend
@@ -16,11 +52,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: pytest
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: No missing migrations
+        run: python manage.py makemigrations --check --dry-run
+      - name: Tests (including the openapi.yaml contract tests)
+        run: pytest
 
   frontend:
+    name: Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
@@ -35,4 +79,15 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # Deployment is added on day 5, once a cloud host is chosen (see docs/plan.md).
+  docker:
+    name: Docker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker-compose.yml is valid
+        run: docker compose config --quiet
+      - name: Build the backend and frontend images
+        run: docker compose build
+
+  # The deploy job (task 11, step 5) runs here once a host is chosen: only on main, after all jobs above pass.

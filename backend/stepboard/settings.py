@@ -117,8 +117,11 @@ WSGI_APPLICATION = 'stepboard.wsgi.application'
 
 # DATABASE_URL selects the database: Postgres in docker compose
 # (postgres://user:password@db:5432/stepboard), a local SQLite file otherwise.
+# An empty DATABASE_URL (from CI, docker compose or .env) counts as unset, not as "no database".
 DATABASES = {
-    'default': dj_database_url.config(default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600),
+    'default': dj_database_url.parse(
+        os.environ.get("DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600
+    ),
 }
 
 
