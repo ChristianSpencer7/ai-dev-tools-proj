@@ -59,8 +59,12 @@ jobs:
         run: pip install -e ".[dev]"
       - name: No missing migrations
         run: python manage.py makemigrations --check --dry-run
-      - name: Tests (including the openapi.yaml contract tests)
-        run: pytest
+      - name: Unit tests
+        run: pytest tests/unit
+      - name: Integration tests (the HTTP API, workflows and the openapi.yaml contract)
+        # Runs even if the unit tests failed, so one run shows the state of both.
+        if: ${{ !cancelled() }}
+        run: pytest tests/integration
       - name: Production settings pass Django's deployment checks
         if: matrix.database == 'postgres'
         env:

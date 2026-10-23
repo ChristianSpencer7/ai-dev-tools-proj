@@ -1,12 +1,19 @@
 import pytest
 
 
+TEST_FOLDERS = ("unit", "integration")
+
+
 def pytest_collection_modifyitems(items):
-    """Marks each test by its folder, so `pytest -m unit` and `pytest -m integration` work too."""
+    """Marks each test by its folder, so `pytest -m unit` and `pytest -m integration` work too.
+
+    CI runs tests/unit and tests/integration separately, so a test anywhere else would never run there.
+    """
     for item in items:
         folder = item.path.parent.name
-        if folder in ("unit", "integration"):
-            item.add_marker(folder)
+        if folder not in TEST_FOLDERS:
+            raise pytest.UsageError(f"{item.path.name}: put tests in tests/unit or tests/integration (see tests/README.md)")
+        item.add_marker(folder)
 
 
 @pytest.fixture(autouse=True)
