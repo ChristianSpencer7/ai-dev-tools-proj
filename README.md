@@ -2,6 +2,8 @@
 
 A web app where a family logs daily steps and competes on a weekly board (Monday–Sunday) and an all-time board. It builds weekly and monthly digests, shows them in the app, and posts them to Discord when a webhook is configured.
 
+**Live:** <https://159-89-228-242.sslip.io>. Join the Demo Family with the invite code `DEMO`. Every push to `main` is tested and then deployed there; see [docs/deployment.md](docs/deployment.md).
+
 - Design and schedule: [docs/plan.md](docs/plan.md)
 - Behavior and acceptance criteria: [product-spec.md](product-spec.md)
 - API contract: [openapi.yaml](openapi.yaml)

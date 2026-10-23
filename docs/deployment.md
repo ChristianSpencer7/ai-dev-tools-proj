@@ -109,10 +109,17 @@ Check: `https://<address>` shows the Demo Family's boards, `http://<address>` re
 
 ### 5. Let GitHub Actions deploy
 
-1. On your computer, make a key just for GitHub Actions (no passphrase, since nobody is there to type it):
-   `ssh-keygen -t ed25519 -f stepboard-deploy -N "" -C "github-actions-deploy"`
-2. On the server, add the **public** half to `/home/deploy/.ssh/authorized_keys`.
-3. In the repository's **Settings → Secrets and variables → Actions**, add:
+The `Deploy to production` job in `.github/workflows/ci.yml` runs on every push to `main` once all checks pass: it connects over SSH, which runs `scripts/deploy.sh`, then waits until the live site's health check, API and React app all respond.
+
+GitHub gets its own SSH key, which the server allows to do one thing only: run `deploy.sh`. No shell, no other commands, no port forwarding.
+
+1. On your computer, make the key. Leave the passphrase empty, since nobody is there to type it:
+   `ssh-keygen -t ed25519 -f $env:USERPROFILE\.ssh\stepboard-deploy -C "github-actions-deploy"`
+2. On the server, add its **public** half to the end of `/home/deploy/.ssh/authorized_keys`, with the restriction in front:
+   `restrict,command="/srv/stepboard/scripts/deploy.sh" ssh-ed25519 AAAA… github-actions-deploy`
+   In PowerShell, this copies that line: `'restrict,command="/srv/stepboard/scripts/deploy.sh" ' + (Get-Content $env:USERPROFILE\.ssh\stepboard-deploy.pub) | Set-Clipboard`
+3. Test it: `ssh -i $env:USERPROFILE\.ssh\stepboard-deploy deploy@159.89.228.242` should run a deploy and disconnect, without a shell.
+4. In the repository's **Settings → Secrets and variables → Actions**, add:
 
 | Secret | Value |
 | --- | --- |
@@ -121,7 +128,7 @@ Check: `https://<address>` shows the Demo Family's boards, `http://<address>` re
 | `DEPLOY_SSH_KEY` | the **private** key file `stepboard-deploy` |
 | `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan -t ed25519 159.89.228.242`, so the deploy can tell it's talking to the real server |
 
-4. Delete the private key file from your computer once it's stored in GitHub.
+5. Delete the private key file from your computer once it's stored in GitHub. To replace the key, repeat these steps and remove the old line from `authorized_keys`.
 
 ## Day to day
 
