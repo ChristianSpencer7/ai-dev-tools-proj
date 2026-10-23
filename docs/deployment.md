@@ -159,6 +159,15 @@ git reset --hard <good commit> && dc up -d --build --wait
 
 The next deploy from `main` replaces it.
 
+### Troubleshooting
+
+**`Bind for 0.0.0.0:80 failed: port is already allocated`.** Something else holds port 80 or 443, such as a test container (`docker ps` shows it; `docker stop <name>`). After freeing the port, recreate the containers that were created during the failed run, or they stay half set up (next item):
+`dc up -d --force-recreate --wait caddy frontend`.
+
+**Caddy logs `lookup acme-v02.api.letsencrypt.org on 127.0.0.53:53 … connection refused`, and the site doesn't answer.** The Caddy container was created during a failed start: `dc ps` shows no ports for it, and `docker exec stepboard-caddy-1 cat /etc/resolv.conf` shows `127.0.0.53` instead of Docker's `127.0.0.11`. Recreate it with the command above; within a minute `dc logs caddy` should say "certificate obtained successfully".
+
+**The site doesn't load at all.** `dc ps` should list all five services as running, the backend as healthy, and Caddy with `0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp`. Then check `dc logs caddy --tail 30` and `dc logs backend --tail 30`.
+
 ### Changing a secret
 
 Edit `.env`, then `./scripts/deploy.sh`. A new `DJANGO_SECRET_KEY` logs everyone out of the admin. `POSTGRES_PASSWORD` is only read when the database is first created, so changing it later also needs `ALTER USER stepboard PASSWORD '…'` in `dc exec db psql -U stepboard`.
