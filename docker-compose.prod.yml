@@ -1,0 +1,51 @@
+# Production, layered on docker-compose.yml (see docs/deployment.md):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Caddy is the only service reachable from the internet. It gets the HTTPS certificate, redirects HTTP to
+# HTTPS, and passes requests on. Settings come from .env on the server; the ones marked :? must be set.
+
+x-production-django: &production-django
+  environment:
+    DATABASE_URL: postgres://stepboard:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/stepboard
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+    DJANGO_HTTPS: "1"
+    DJANGO_ALLOWED_HOSTS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env},backend,localhost
+    DJANGO_CSRF_TRUSTED_ORIGINS: https://${SITE_ADDRESS}
+
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+
+  backend:
+    <<: *production-django
+    # Only Caddy is published. Docker bypasses ufw for published ports, so these would otherwise be public.
+    ports: !reset []
+
+  scheduler:
+    <<: *production-django
+
+  frontend:
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data  # the HTTPS certificates; kept so restarts don't request new ones
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
+volumes:
+  caddy_data:
+  caddy_config:

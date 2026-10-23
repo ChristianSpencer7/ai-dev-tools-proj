@@ -43,7 +43,7 @@ flowchart LR
     subgraph Compose["docker compose"]
         FE["Frontend<br/>React, central API client"] --> API["Backend<br/>FastAPI, follows openapi.yaml"]
         API --> DB["Database<br/>Postgres"]
-        SCH["Scheduler<br/>weekly and monthly digest"] --> API
+        SCH["Scheduler<br/>weekly and monthly digest"] --> DB
         SEED["Seed script<br/>demo family, 4 weeks"] --> DB
     end
     API --> MSG["Messages page<br/>in the app"]
@@ -51,7 +51,7 @@ flowchart LR
     MCP["MCP server<br/>get_leaderboard, log_steps"] --> API
 ```
 
-The frontend talks to the backend only through the API in `openapi.yaml`. The MCP server, from the agent extension pack, uses the same API.
+The frontend talks to the backend only through the API in `openapi.yaml`. The MCP server, from the agent extension pack, uses the same API. The scheduler runs inside the backend's code and writes digests to the database directly; it doesn't call the API.
 
 ## Leaderboards and scoring
 

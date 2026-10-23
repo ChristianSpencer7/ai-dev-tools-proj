@@ -9,3 +9,5 @@ __pycache__/
 *.db-wal
 node_modules/
 dist/
+db.sqlite3
+backend/staticfiles/

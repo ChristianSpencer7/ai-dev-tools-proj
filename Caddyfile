@@ -1,0 +1,23 @@
+# The public entry point in production (docker-compose.prod.yml). SITE_ADDRESS comes from .env, for example
+# 159-89-228-242.sslip.io. Caddy gets its HTTPS certificate automatically and redirects HTTP to HTTPS, and it
+# tells the services behind it the request came in over HTTPS (X-Forwarded-Proto).
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# The Django admin and its CSS and JavaScript come straight from the backend.
+	@backend path /admin /admin/* /static/*
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else, the React app and /api/..., goes to nginx in the frontend container.
+	handle {
+		reverse_proxy frontend:80
+	}
+}

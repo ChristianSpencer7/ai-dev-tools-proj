@@ -1,6 +1,6 @@
 from datetime import date
 
-from stepboard.leaderboard import (
+from leaderboard.ranking import (
     DayRecord,
     assign_ranks,
     best_single_day,

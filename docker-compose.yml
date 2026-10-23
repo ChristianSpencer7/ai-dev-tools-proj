@@ -1,9 +1,28 @@
-# docker compose up  →  app at http://localhost:8080, API at http://localhost:8000/docs
-# Demo data loads on first start. Discord is optional: set DISCORD_WEBHOOK_URL in .env.
+# docker compose up --build  →  the app at http://localhost:8080; the API and admin at http://localhost:8000
+# Nothing to configure: every setting has a local default, and the demo family loads on first start.
+# Discord is optional: put DISCORD_WEBHOOK_URL in a .env file next to this one.
+
+# Shared by the backend and the scheduler: same image, same settings.
+x-django: &django
+  build: ./backend
+  image: stepboard-backend
+  restart: unless-stopped
+  environment:
+    DATABASE_URL: postgres://stepboard:stepboard@db:5432/stepboard
+    DJANGO_DEBUG: "0"
+    # For running locally only. A real deployment must set its own DJANGO_SECRET_KEY (task 11).
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-compose-only-not-a-secret}
+    # "backend" is how the frontend container and the health check reach it.
+    DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+    DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+    # Deployment only, behind an HTTPS proxy: HTTPS redirects, secure cookies, HSTS. Off on a laptop.
+    DJANGO_HTTPS: ${DJANGO_HTTPS:-}
+    DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
 
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: stepboard
       POSTGRES_PASSWORD: stepboard
@@ -16,11 +35,9 @@ services:
       timeout: 5s
       retries: 15
 
+  # Applies migrations and seeds the demo family on start, then serves the API with gunicorn.
   backend:
-    build: ./backend
-    environment:
-      DATABASE_URL: postgresql+psycopg://stepboard:stepboard@db:5432/stepboard
-      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+    <<: *django
     ports:
       - "8000:8000"
     depends_on:
@@ -31,22 +48,26 @@ services:
       interval: 3s
       timeout: 5s
       retries: 20
+      start_period: 10s
 
+  # Weekly digests on Mondays and monthly digests on the 1st, 8:00 AM Eastern.
+  # Waits for a healthy backend, which means the migrations have run.
   scheduler:
-    build: ./backend
-    command: ["python", "-m", "stepboard.scheduler"]
-    environment:
-      API_URL: http://backend:8000
+    <<: *django
+    command: ["python", "manage.py", "run_scheduler"]
     depends_on:
       backend:
         condition: service_healthy
 
+  # nginx serves the React app and passes /api/ to the backend.
   frontend:
     build: ./frontend
+    restart: unless-stopped
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:

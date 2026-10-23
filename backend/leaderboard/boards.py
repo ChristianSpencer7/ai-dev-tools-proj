@@ -1,13 +1,12 @@
-"""Builds leaderboards from the database. The same Board feeds the API and the digest text."""
+"""Builds the weekly and all-time leaderboards. The same Board feeds the API and the digest text."""
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Literal
 
-from sqlalchemy.orm import Session
-
-from stepboard import db
-from stepboard.leaderboard import (
+from leaderboard import queries
+from leaderboard.models import Family
+from leaderboard.ranking import (
     Standing,
     best_single_day,
     build_standings,
@@ -18,6 +17,7 @@ from stepboard.leaderboard import (
 )
 
 WEEK = timedelta(days=7)
+SUNDAY = 6
 
 
 @dataclass(frozen=True)
@@ -32,11 +32,12 @@ class Board:
     title: str
     start: date
     end: date
-    has_comparison: bool
+    has_comparison: bool  # False when there's no earlier period to compare with
     standings: list[Standing]
     callouts: list[Callout] = field(default_factory=list)
 
     def text(self) -> str:
+        """The board as a digest message (task 7)."""
         return format_board(
             self.title,
             self.standings,
@@ -45,31 +46,31 @@ class Board:
         )
 
 
-def weekly_board(session: Session, family: db.Family, end_day: date) -> Board:
-    """Standings from Monday through end_day, compared with the same days last week.
+def weekly_board(family: Family, as_of: date) -> Board:
+    """Standings from Monday through as_of, compared with the same days last week.
 
-    With end_day on a Sunday this is the final weekly board; earlier in the week it
-    is the standings so far.
+    With as_of on a Sunday this is the final weekly board; earlier in the week it is the standings so far.
+    Steps from before the family's start date never count.
     """
-    start = week_start(end_day)
-    if end_day.weekday() == 6:
-        title = f"🏆 Weekly Steps — {format_range(start, end_day)}"
+    start = week_start(as_of)
+    if as_of.weekday() == SUNDAY:
+        title = f"🏆 Weekly Steps — {format_range(start, as_of)}"
     else:
-        title = f"📊 Week So Far — {format_range(start, end_day)}"
+        title = f"📊 Week So Far — {format_range(start, as_of)}"
 
     counted_from = max(start, family.start_date)
-    current = db.totals(session, family.id, counted_from, end_day)
-    prev_end = end_day - WEEK
+    current = queries.totals(family, counted_from, as_of)
+    prev_end = as_of - WEEK
     previous = (
-        db.totals(session, family.id, max(start - WEEK, family.start_date), prev_end)
+        queries.totals(family, max(start - WEEK, family.start_date), prev_end)
         if prev_end >= family.start_date
-        else None
+        else None  # the family's first week: nothing to compare with
     )
-    names = db.member_names(session, family.id)
+    names = queries.member_names(family)
     standings = build_standings(current, previous, names)
 
     callouts = []
-    if best := best_single_day(db.daily(session, family.id, counted_from, end_day)):
+    if best := best_single_day(queries.daily(family, counted_from, as_of)):
         callouts.append(
             Callout(
                 "best_single_day",
@@ -84,21 +85,21 @@ def weekly_board(session: Session, family: db.Family, end_day: date) -> Board:
             )
         )
 
-    return Board("weekly", title, start, end_day, previous is not None, standings, callouts)
+    return Board("weekly", title, start, as_of, previous is not None, standings, callouts)
 
 
-def alltime_board(session: Session, family: db.Family, as_of: date) -> Board:
-    """Totals since the family's start date, compared with the end of the previous month."""
+def alltime_board(family: Family, as_of: date) -> Board:
+    """Totals since the family's start date, compared with the totals at the end of the previous month."""
     start = family.start_date
     title = f"🏅 All-time Steps — since {start:%b} {start.day}, {start.year}"
-    current = db.totals(session, family.id, start, as_of)
+    current = queries.totals(family, start, as_of)
     prev_end = as_of.replace(day=1) - timedelta(days=1)
-    previous = db.totals(session, family.id, start, prev_end) if prev_end >= start else None
-    names = db.member_names(session, family.id)
+    previous = queries.totals(family, start, prev_end) if prev_end >= start else None
+    names = queries.member_names(family)
     standings = build_standings(current, previous, names)
 
     callouts = []
-    if best := best_single_day(db.daily(session, family.id, start, as_of)):
+    if best := best_single_day(queries.daily(family, start, as_of)):
         callouts.append(
             Callout(
                 "best_single_day",
