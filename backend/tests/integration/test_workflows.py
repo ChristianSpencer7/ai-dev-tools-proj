@@ -172,6 +172,11 @@ def test_a_digest_reaches_discord_and_the_messages_page(api, settings, monkeypat
     settings.DISCORD_WEBHOOK_URL = "https://discord.test/api/webhooks/1/token"
     monkeypatch.setattr("leaderboard.discord.httpx.post", fake_discord)
 
+    # Another family exists first, so a digest built from the wrong family would show the wrong people.
+    neighbors = api.post("/families", {"name": "Neighbors", "start_date": MONDAY.isoformat()})
+    neighbor = api.post("/families/join", {"invite_code": neighbors["invite_code"], "name": "Pat"})
+    api.log(neighbor["id"], MONDAY, [20_000])
+
     family = api.post("/families", {"name": "Posters", "start_date": MONDAY.isoformat()})
     me = api.post("/families/join", {"invite_code": family["invite_code"], "name": "Kim"})
     api.log(me["id"], MONDAY, [7_000, 8_000, 9_000])
@@ -180,7 +185,10 @@ def test_a_digest_reaches_discord_and_the_messages_page(api, settings, monkeypat
     assert digest["discord_status"] == "sent"
     assert [post["content"] for post in sent] == [digest["text"]]
     assert "🥇 Kim — 24,000" in digest["text"]
+    assert "Pat" not in digest["text"]
+    assert digest["family_id"] == family["id"]
     assert api.get(f"/families/{family['id']}/messages") == [digest]
+    assert api.get(f"/families/{neighbors['id']}/messages") == []
 
 
 def test_scheduled_digests_appear_in_the_app(api):
