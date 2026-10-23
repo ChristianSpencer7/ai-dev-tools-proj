@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "mcp>=2.3,<3",  # the official MCP SDK; version 2 renamed FastMCP to MCPServer
     "httpx>=0.27",  # calls the app's HTTP API (openapi.yaml)
+    "tzdata",  # time zone data for "today, Eastern" on Windows, which has none built in
 ]
 
 [project.optional-dependencies]
