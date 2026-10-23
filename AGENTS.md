@@ -14,7 +14,7 @@ A family step leaderboard: React (Vite) frontend, Django + Django REST Framework
 | `backend/stepboard/` | Django project: `settings.py` (everything comes from environment variables), `urls.py` |
 | `backend/leaderboard/` | The app. `models.py` and `migrations/`; `serializers.py` (one per contract schema); `views.py` and `urls.py` (routes, no trailing slashes); `ranking.py` (pure ranking math); `queries.py` (database reads for the boards); `boards.py` (weekly and all-time boards); `digests.py` and `discord.py`; `seed.py`; `scheduler.py`; `invites.py`; `dates.py` (`today_eastern()`); `exceptions.py` (validation errors as 422) |
 | `backend/leaderboard/management/commands/` | `seed_demo`, `send_digests`, `run_scheduler` |
-| `backend/tests/` | pytest with pytest-django. `test_contract.py` and `test_contract_responses.py` check the backend against `openapi.yaml`; `conftest.py` keeps every test away from real Discord |
+| `backend/tests/` | pytest with pytest-django, in `unit/` (one module, called directly) and `integration/` (through the HTTP API, including whole user journeys and the `openapi.yaml` contract tests). `conftest.py` keeps every test away from real Discord. See [backend/tests/README.md](backend/tests/README.md) |
 | `frontend/src/api.js` | The **only** place the frontend calls the backend |
 | `frontend/src/components/` | Leaderboard, LogSteps, Messages, JoinFamily |
 | `docker-compose.yml` | Local stack: Postgres, backend (gunicorn), scheduler, frontend (nginx) |
@@ -29,7 +29,9 @@ pip install -e ".[dev]"
 python manage.py migrate
 python manage.py seed_demo                        # the Demo Family, invite code DEMO
 python manage.py runserver                        # http://localhost:8000
-pytest                                            # must be run from backend/
+pytest tests/unit                                 # must be run from backend/
+pytest tests/integration
+pytest                                            # both
 python manage.py makemigrations --check --dry-run  # fails if a migration is missing
 
 # The same tests on Postgres (PowerShell; a local Postgres on port 5432)
@@ -55,7 +57,7 @@ docker compose up --build                         # app at http://localhost:8080
 - **Migrations.** Run `makemigrations` after any model change and commit the file. Never edit a migration that's been pushed; add a new one.
 - **Discord stays optional.** Nothing may require `DISCORD_WEBHOOK_URL`, a failed post must never lose a digest, and the webhook URL must never be logged (it's a secret; that's why `httpx` logging is kept at WARNING).
 - **Tests never reach real services.** The `tests/conftest.py` guard fails any test that tries to post to Discord; don't remove it.
-- **Tests with changes.** Add or update tests for any behavior change. Run `pytest` (on SQLite, and on Postgres for database changes) and the frontend tests before saying you're done.
+- **Tests with changes.** Add or update tests for any behavior change, in `tests/unit/` or `tests/integration/` (a test anywhere else is rejected); a new user-facing flow also gets a journey in `tests/integration/test_workflows.py`. Run `pytest` (on SQLite, and on Postgres for database changes) and the frontend tests before saying you're done.
 - **No secrets in the repo.** Configuration comes from environment variables. `.env` is gitignored; the production `.env` lives only on the server.
 - **Deploying is merging.** Every push to `main` is tested and then deployed by CI. Work on a branch and open a pull request; don't push to `main` directly.
 - **Record AI-assisted work** in [docs/ai-workflow.md](docs/ai-workflow.md): what was asked, what was checked, and what was found.

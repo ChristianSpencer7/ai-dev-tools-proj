@@ -94,7 +94,24 @@ Every backlog task followed the same loop:
 
 - **Result:** the first automatic deploy, from merging pull request #2, passed every check, deployed, and confirmed the live site responds.
 
-### Mistakes the AI made, and how they were caught
+### 2026-10-23: Task 13, integration tests
+
+- **Prompt:** *"let's go with task 13"*. The developer chose the AI's definition: **unit** tests call one module directly; **integration** tests go through the HTTP API across endpoints.
+- **Delegated:**
+  - splitting the 145 tests into `tests/unit/` and `tests/integration/`
+  - seven workflow tests, each a whole user journey
+  - separate CI steps for each kind
+  - `backend/tests/README.md`
+- **Verified:** both folders on SQLite and Postgres locally, then on GitHub, where CI showed "Unit tests" and "Integration tests" as separate steps on both databases.
+- **What verification caught:**
+
+| Problem | How it was caught | Fix |
+| --- | --- | --- |
+| A digest built for the wrong family passed all seven workflow tests, because the family under test was always the first one in the database | Mutation checks aimed at the links between components (10 breaks) | The digest workflow creates a neighbouring family first (`1039734`) |
+| A test file left directly in `tests/` would run in neither CI step | Reasoning about the split | `conftest.py` rejects test files outside the two folders |
+| The AI's comment claimed a misspelled `pytest -m` marker would be an error; it silently selects nothing | Trying it | The comment and the docs now say so, and recommend the folder form |
+
+
 
 Verification found these before they caused harm. They're recorded because catching them is the point of the loop.
 
@@ -103,6 +120,8 @@ Verification found these before they caused harm. They're recorded because catch
 - A port probe that reported an open SSH port as blocked. Caught because SSH had just answered on it; redone with a plain connection test.
 - A mutation check aimed at a field that only reads requests, so it couldn't fail. Spotted in the results and redone on a response field.
 - Restoring files after mutation checks changed their line endings. Caught by `git status`; files restored byte for byte from then on.
+- Two of task 13's mutation checks were flawed: one turned the code into a crash, the other lacked an import and failed with `NameError`, so neither tested what it claimed. Spotted from the `ERROR`s in the results; one was redone properly and the other dropped (its case was already covered).
+- A commit meant to hold only `docs/backlog.md` also took 13 test-file moves that `git mv` had already staged. Caught by checking what the next commit contained. With the developer's agreement, the two commits were rebuilt and the branch replaced on GitHub with `--force-with-lease`. Since then the AI checks what's staged before committing only part of the changes.
 
 ## Decisions made by the developer
 

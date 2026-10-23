@@ -22,7 +22,7 @@ A small backlog for building the [plan](plan.md) with a Django backend instead o
 | 10 | Docker compose with Django | 1–2 | S | ✅ Done |
 | 11 | CI and deployment | 5 | M | ✅ Done |
 | 12 | MCP server on the Django API | 6 | M | To do |
-| 13 | Integration tests | 3, 5 | M | 🔄 In progress |
+| 13 | Integration tests | 3, 5 | M | ✅ Done |
 | 14 | Rest of the agent extension pack | 6 | M | To do |
 | 15 | Security scans and PR audit | 7 | M | To do |
 | 16 | Ops diagnosis and AI tool/data policy | 7 | S | To do |
@@ -31,7 +31,7 @@ A small backlog for building the [plan](plan.md) with a Django backend instead o
 
 S = half a day or less, M = about a day.
 
-Progress as of 2026-10-23: tasks 1–11 are done, and the app is live at <https://159-89-228-242.sslip.io>, deployed from `main` by CI.
+Progress as of 2026-10-23: tasks 1–11 and 13 are done, and the app is live at <https://159-89-228-242.sslip.io>, deployed from `main` by CI.
 
 ## Rubric coverage
 
