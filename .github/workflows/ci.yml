@@ -6,10 +6,11 @@ on:
   pull_request:
     branches: [main]
 
-# A newer push to the same branch cancels the older, still-running checks.
+# A newer push to a branch cancels its older, still-running checks. Not on main: there a run may be
+# deploying, and stopping it halfway could leave the server half updated, so main's runs queue instead.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -100,4 +101,58 @@ jobs:
       - name: Build the backend and frontend images
         run: docker compose build
 
-  # The deploy job (task 11, step 5) runs here once a host is chosen: only on main, after all jobs above pass.
+  deploy:
+    name: Deploy to production
+    # Only for pushes to main (a merged pull request), and only once every check above has passed.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend, docker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://159-89-228-242.sslip.io
+    concurrency:
+      group: deploy-production  # one deploy at a time
+      cancel-in-progress: false
+    env:
+      SITE_URL: https://159-89-228-242.sslip.io
+    steps:
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # The server's own key, so SSH refuses to connect if anything else answers at that address.
+          echo "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        # The server only lets this key run scripts/deploy.sh (docs/deployment.md), so no command is passed.
+        run: ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST"
+
+      - name: The live site answers
+        run: |
+          site_is_up() {
+            curl -fsS --max-time 10 "$SITE_URL/api/health" > /dev/null &&
+              curl -fsS --max-time 10 "$SITE_URL/api/families" | grep -q '"Demo Family"' &&
+              curl -fsS --max-time 10 "$SITE_URL/" | grep -q '<title>Family Step Leaderboard</title>'
+          }
+          for attempt in $(seq 1 30); do
+            if site_is_up; then
+              echo "$SITE_URL is up: health, API and the React app all respond."
+              exit 0
+            fi
+            echo "Not ready yet (attempt $attempt of 30); waiting 10 seconds."
+            sleep 10
+          done
+          echo "::error::$SITE_URL didn't respond correctly after the deploy."
+          exit 1
+
+      - name: Remove the key from the runner
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
