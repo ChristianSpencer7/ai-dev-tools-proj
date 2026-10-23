@@ -1,6 +1,14 @@
 import pytest
 
 
+def pytest_collection_modifyitems(items):
+    """Marks each test by its folder, so `pytest -m unit` and `pytest -m integration` work too."""
+    for item in items:
+        folder = item.path.parent.name
+        if folder in ("unit", "integration"):
+            item.add_marker(folder)
+
+
 @pytest.fixture(autouse=True)
 def no_real_discord(settings, monkeypatch):
     """Tests never post to a real Discord channel, even with DISCORD_WEBHOOK_URL in .env.

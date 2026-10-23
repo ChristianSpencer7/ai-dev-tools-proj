@@ -12,7 +12,8 @@ from pathlib import Path
 import yaml
 from drf_spectacular.generators import SchemaGenerator
 
-SPEC_PATH = Path(__file__).resolve().parents[2] / "openapi.yaml"
+# The repository root's openapi.yaml, found by looking upward, so moving this file doesn't break it.
+SPEC_PATH = next(p / "openapi.yaml" for p in Path(__file__).resolve().parents if (p / "openapi.yaml").exists())
 METHODS = {"get", "post", "put", "patch", "delete"}
 
 
