@@ -69,5 +69,6 @@ cd frontend && npm test
 | `frontend/` | React app with one central API client (`src/api.js`) |
 | `.github/workflows/` | CI |
 | `docs/` | Design plan, agent extension pack, permissions |
-| `security/`, `ops/` | Security scans and ops notes (day 7) |
+| `security/` | Security scans, findings, a pull request audit, and notes on AI agents' risks; start with [security/README.md](security/README.md) |
+| `ops/` | Ops notes (day 7) |
 | `agent-capabilities/`, `agent-hooks/`, `mcp-server/`, `custom-agent/` | Agent extension pack (day 6) |
