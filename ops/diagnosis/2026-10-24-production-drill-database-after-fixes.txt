@@ -1,0 +1,150 @@
+# ops/drill-database.sh on the production server, 2026-10-24 18:46 UTC, after pull request #7 deployed the fixes.
+# Run by the developer as deploy; pasted back as printed (already redacted by ops/redact.py).
+# Two lines of this version of the script were wrong, and are fixed since: "backend healthy again after: 5s" matched
+# the database's "(healthy)" (the backend was still unhealthy, see "After"), and "health checks: 27" counted the
+# drill's own probes with Docker's checks. Findings: ops/diagnosis/README.md.
+
+===== Drill: stop the database =====
+Started: 2026-10-24 18:45:57 UTC, deployed commit 00e70df
+
+===== Before =====
+18:45:57  /api/health 200 (0.154713s)  /api/families 200 (0.047563s)  / 200 (0.126651s)  | backend: Up 5 minutes (healthy) | db: Up 5 minutes (healthy)
+
+===== Stopping the database =====
+ Container stepboard-db-1 Stopping
+ Container stepboard-db-1 Stopped
+
+===== During: about every 5 seconds for 120s (by the clock: each check can take seconds now) =====
+18:45:58  /api/health 500 (0.091935s)  /api/families 500 (0.088090s)  / 200 (0.054940s)  | backend: Up 5 minutes (healthy) | db: Exited (0) Less than a second ago
+18:46:04  /api/health 500 (0.061463s)  /api/families 500 (0.059072s)  / 200 (0.050858s)  | backend: Up 5 minutes (healthy) | db: Exited (0) 6 seconds ago
+18:46:09  /api/health 500 (0.064786s)  /api/families 500 (0.062371s)  / 200 (0.061102s)  | backend: Up 5 minutes (healthy) | db: Exited (0) 11 seconds ago
+18:46:15  /api/health 500 (0.062553s)  /api/families 500 (0.064482s)  / 200 (0.049436s)  | backend: Up 5 minutes (healthy) | db: Exited (0) 17 seconds ago
+18:46:20  /api/health 500 (0.054419s)  /api/families 500 (0.054016s)  / 200 (0.043811s)  | backend: Up 5 minutes (healthy) | db: Exited (0) 22 seconds ago
+18:46:26  /api/health 500 (0.068039s)  /api/families 500 (0.059570s)  / 200 (0.056674s)  | backend: Up 5 minutes (healthy) | db: Exited (0) 28 seconds ago
+18:46:31  /api/health 500 (0.057805s)  /api/families 500 (0.071233s)  / 200 (0.047721s)  | backend: Up 5 minutes (healthy) | db: Exited (0) 34 seconds ago
+18:46:37  /api/health 500 (0.051661s)  /api/families 500 (0.050413s)  / 200 (0.039691s)  | backend: Up 6 minutes (healthy) | db: Exited (0) 39 seconds ago
+18:46:42  /api/health 500 (0.053456s)  /api/families 500 (0.056032s)  / 200 (0.049687s)  | backend: Up 6 minutes (healthy) | db: Exited (0) 44 seconds ago
+18:46:48  /api/health 500 (0.056034s)  /api/families 500 (0.053125s)  / 200 (0.044230s)  | backend: Up 6 minutes (healthy) | db: Exited (0) 50 seconds ago
+18:46:53  /api/health 500 (0.052166s)  /api/families 500 (0.049493s)  / 200 (0.042925s)  | backend: Up 6 minutes (healthy) | db: Exited (0) 55 seconds ago
+18:46:59  /api/health 500 (0.051051s)  /api/families 500 (0.051787s)  / 200 (0.043407s)  | backend: Up 6 minutes (healthy) | db: Exited (0) About a minute ago
+18:47:04  /api/health 500 (0.070529s)  /api/families 500 (0.062567s)  / 200 (0.064380s)  | backend: Up 6 minutes (healthy) | db: Exited (0) About a minute ago
+18:47:10  /api/health 500 (0.054368s)  /api/families 500 (0.057408s)  / 200 (0.046896s)  | backend: Up 6 minutes (healthy) | db: Exited (0) About a minute ago
+18:47:15  /api/health 500 (0.062837s)  /api/families 500 (0.058897s)  / 200 (0.049011s)  | backend: Up 6 minutes (healthy) | db: Exited (0) About a minute ago
+18:47:21  /api/health 500 (0.114146s)  /api/families 500 (0.114918s)  / 200 (0.094303s)  | backend: Up 6 minutes (unhealthy) | db: Exited (0) About a minute ago
+18:47:27  /api/health 500 (0.054888s)  /api/families 500 (0.058522s)  / 200 (0.052394s)  | backend: Up 6 minutes (unhealthy) | db: Exited (0) About a minute ago
+18:47:32  /api/health 500 (0.057883s)  /api/families 500 (0.060537s)  / 200 (0.041957s)  | backend: Up 6 minutes (unhealthy) | db: Exited (0) About a minute ago
+18:47:38  /api/health 500 (0.061665s)  /api/families 500 (0.051891s)  / 200 (0.041231s)  | backend: Up 7 minutes (unhealthy) | db: Exited (0) About a minute ago
+18:47:43  /api/health 500 (0.060582s)  /api/families 500 (0.063560s)  / 200 (0.042454s)  | backend: Up 7 minutes (unhealthy) | db: Exited (0) About a minute ago
+18:47:49  /api/health 500 (0.054307s)  /api/families 500 (0.053406s)  / 200 (0.042272s)  | backend: Up 7 minutes (unhealthy) | db: Exited (0) About a minute ago
+18:47:54  /api/health 500 (0.066900s)  /api/families 500 (0.066743s)  / 200 (0.047914s)  | backend: Up 7 minutes (unhealthy) | db: Exited (0) About a minute ago
+
+===== What a visitor gets =====
+--- GET /api/health
+HTTP/2 500
+content-type: text/html; charset=utf-8
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+
+--- GET /api/families
+HTTP/2 500
+content-type: text/html; charset=utf-8
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+
+
+===== Containers, with the database stopped =====
+SERVICE     STATE     STATUS
+backend     running   Up 7 minutes (unhealthy)
+caddy       running   Up 7 minutes
+db          exited    Exited (0) 2 minutes ago
+frontend    running   Up 7 minutes
+scheduler   running   Up 7 minutes
+
+===== Backend logs since the stop: the errors, by kind =====
+     48 psycopg.OperationalError: failed to resolve host 'db': [Errno -3] Temporary failure in name resolution
+     48 django.db.utils.OperationalError: failed to resolve host 'db': [Errno -3] Temporary failure in name resolution
+     27 ERROR django.request: Internal Server Error: /health
+     23 ERROR django.request: Internal Server Error: /families
+      2 django.db.utils.OperationalError: terminating connection due to administrator command
+
+===== Backend requests since the stop (health checks left out, then counted) =====
+backend-1  | 2026-10-24T18:46:15.426445284Z 172.18.0.4 - - [24/Oct/2026:14:46:15 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:46:20.960997727Z 172.18.0.4 - - [24/Oct/2026:14:46:20 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:46:26.493581861Z 172.18.0.4 - - [24/Oct/2026:14:46:26 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:46:32.087986974Z 172.18.0.4 - - [24/Oct/2026:14:46:32 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:46:37.598611852Z 172.18.0.4 - - [24/Oct/2026:14:46:37 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:46:43.042720673Z 172.18.0.4 - - [24/Oct/2026:14:46:43 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:46:48.545750563Z 172.18.0.4 - - [24/Oct/2026:14:46:48 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:46:54.035908745Z 172.18.0.4 - - [24/Oct/2026:14:46:54 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:46:59.502442495Z 172.18.0.4 - - [24/Oct/2026:14:46:59 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:05.009900044Z 172.18.0.4 - - [24/Oct/2026:14:47:05 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:10.543808340Z 172.18.0.4 - - [24/Oct/2026:14:47:10 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:16.117520248Z 172.18.0.4 - - [24/Oct/2026:14:47:16 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:21.774422020Z 172.18.0.4 - - [24/Oct/2026:14:47:21 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:27.334553663Z 172.18.0.4 - - [24/Oct/2026:14:47:27 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:32.897105420Z 172.18.0.4 - - [24/Oct/2026:14:47:32 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:38.388897243Z 172.18.0.4 - - [24/Oct/2026:14:47:38 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:43.892927360Z 172.18.0.4 - - [24/Oct/2026:14:47:43 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:49.387010863Z 172.18.0.4 - - [24/Oct/2026:14:47:49 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:47:54.890437242Z 172.18.0.4 - - [24/Oct/2026:14:47:54 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:48:00.621268810Z 172.18.0.4 - - [24/Oct/2026:14:48:00 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+(health checks in that time: 27, of which failed: 27)
+
+===== Starting the database =====
+ Container stepboard-db-1 Starting
+ Container stepboard-db-1 Started
+
+===== Recovery: every 3 seconds until the site answers and the backend is healthy again (at most 3 minutes) =====
+18:48:02  /api/health 500 (0.106007s)  /api/families 200 (0.120590s)  / 200 (0.061162s)  | backend: Up 7 minutes (unhealthy) | db: Up Less than a second (health: starting)
+18:48:05  /api/health 200 (0.064626s)  /api/families 200 (0.050476s)  / 200 (0.050344s)  | backend: Up 7 minutes (unhealthy) | db: Up 4 seconds (healthy)
+Site answering again after: 1s; backend healthy again after: 5s
+
+===== Backend logs since the restart =====
+backend-1  | 2026-10-24T18:48:02.131192318Z     self.connect()
+backend-1  | 2026-10-24T18:48:02.131194321Z   File "/usr/local/lib/python3.12/site-packages/django/utils/asyncio.py", line 26, in inner
+backend-1  | 2026-10-24T18:48:02.131196350Z     return func(*args, **kwargs)
+backend-1  | 2026-10-24T18:48:02.131198318Z            ^^^^^^^^^^^^^^^^^^^^^
+backend-1  | 2026-10-24T18:48:02.131200188Z   File "/usr/local/lib/python3.12/site-packages/django/db/backends/base/base.py", line 256, in connect
+backend-1  | 2026-10-24T18:48:02.131202325Z     self.connection = self.get_new_connection(conn_params)
+backend-1  | 2026-10-24T18:48:02.131204256Z                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  | 2026-10-24T18:48:02.131206206Z   File "/usr/local/lib/python3.12/site-packages/django/utils/asyncio.py", line 26, in inner
+backend-1  | 2026-10-24T18:48:02.131676123Z     return func(*args, **kwargs)
+backend-1  | 2026-10-24T18:48:02.131688740Z            ^^^^^^^^^^^^^^^^^^^^^
+backend-1  | 2026-10-24T18:48:02.131691000Z   File "/usr/local/lib/python3.12/site-packages/django/db/backends/postgresql/base.py", line 345, in get_new_connection
+backend-1  | 2026-10-24T18:48:02.131693543Z     connection = self.Database.connect(**conn_params)
+backend-1  | 2026-10-24T18:48:02.131695483Z                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  | 2026-10-24T18:48:02.131697384Z   File "/usr/local/lib/python3.12/site-packages/psycopg/connection.py", line 126, in connect
+backend-1  | 2026-10-24T18:48:02.131699439Z     raise last_ex.with_traceback(None)
+backend-1  | 2026-10-24T18:48:02.131701416Z django.db.utils.OperationalError: connection failed: connection to server at "172.18.0.2", port 5432 failed: Connection refused
+backend-1  | 2026-10-24T18:48:02.131703615Z     Is the server running on that host and accepting TCP/IP connections?
+backend-1  | 2026-10-24T18:48:02.132420440Z 172.18.0.4 - - [24/Oct/2026:14:48:02 -0400] "GET /health HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:48:02.282382828Z 172.18.0.4 - - [24/Oct/2026:14:48:02 -0400] "GET /families HTTP/1.1" 200 57 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T18:48:05.907366585Z 172.18.0.4 - - [24/Oct/2026:14:48:05 -0400] "GET /families HTTP/1.1" 200 57 "-" "curl/8.5.0"
+
+===== After =====
+SERVICE     STATE     STATUS
+backend     running   Up 7 minutes (unhealthy)
+caddy       running   Up 7 minutes
+db          running   Up 4 seconds (healthy)
+frontend    running   Up 7 minutes
+scheduler   running   Up 7 minutes
+
+===== Cleanup =====
