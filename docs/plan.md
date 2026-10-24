@@ -9,7 +9,7 @@ A full-stack web app where a family logs daily steps and competes on two leaderb
 The app is designed for the course's final project, so it must run and make sense for a peer reviewer who has no smartwatch and no family. Watches are optional, demo data comes built in, and Discord needs no setup.
 
 - **Frontend:** React (Vite), with one central API client
-- **Backend:** FastAPI (Python), following `openapi.yaml`
+- **Backend:** Django with Django REST Framework (Python), following `openapi.yaml`. The first prototype used FastAPI; [backlog.md](backlog.md) rebuilt it in Django
 - **Database:** Postgres; SQLite for tests
 - **Runs with:** `docker compose up`, which also loads demo data
 - **Time zone:** Eastern for everyone; a day ends at midnight Eastern
@@ -41,7 +41,7 @@ flowchart LR
     U["Family member or reviewer<br/>web browser"] --> FE
     EXT["Later: Apple Shortcut,<br/>Fitbit, Garmin helper"] -.-> API
     subgraph Compose["docker compose"]
-        FE["Frontend<br/>React, central API client"] --> API["Backend<br/>FastAPI, follows openapi.yaml"]
+        FE["Frontend<br/>React, central API client"] --> API["Backend<br/>Django + DRF, follows openapi.yaml"]
         API --> DB["Database<br/>Postgres"]
         SCH["Scheduler<br/>weekly and monthly digest"] --> DB
         SEED["Seed script<br/>demo family, 4 weeks"] --> DB
