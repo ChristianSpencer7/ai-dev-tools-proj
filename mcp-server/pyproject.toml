@@ -1,0 +1,26 @@
+[project]
+name = "stepboard-mcp"
+version = "0.1.0"
+description = "MCP server for the family step leaderboard: lets an AI assistant read the boards and log steps through the app's API"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=2.3,<3",  # the official MCP SDK; version 2 renamed FastMCP to MCPServer
+    "httpx>=0.27",  # calls the app's HTTP API (openapi.yaml)
+    "tzdata",  # time zone data for "today, Eastern" on Windows, which has none built in
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+stepboard-mcp = "stepboard_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["stepboard_mcp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

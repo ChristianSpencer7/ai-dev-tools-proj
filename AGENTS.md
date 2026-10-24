@@ -19,7 +19,8 @@ A family step leaderboard: React (Vite) frontend, Django + Django REST Framework
 | `frontend/src/components/` | Leaderboard, LogSteps, Messages, JoinFamily |
 | `docker-compose.yml` | Local stack: Postgres, backend (gunicorn), scheduler, frontend (nginx) |
 | `docker-compose.prod.yml`, `Caddyfile`, `scripts/deploy.sh` | Production on top of the local stack: Caddy for HTTPS; see [docs/deployment.md](docs/deployment.md) |
-| `.github/workflows/ci.yml` | Tests on SQLite and Postgres, frontend, Docker builds, then deploys `main` |
+| `mcp-server/`, `.mcp.json` | MCP server giving AI assistants `get_leaderboard`, `list_members` and `log_steps`, through the public API; registered for Claude Code. See [mcp-server/README.md](mcp-server/README.md) |
+| `.github/workflows/ci.yml` | Tests on SQLite and Postgres, frontend, the MCP server, Docker builds, then deploys `main` |
 
 ## Commands
 
@@ -43,6 +44,10 @@ npm test
 npm run dev                                       # http://localhost:5173, /api goes to port 8000
 npm run build
 
+# MCP server (from mcp-server/, in its own .venv)
+pip install -e ".[dev]"
+pytest                                            # the end-to-end tests also need the backend: see mcp-server/README.md
+
 # Everything, as it runs in production but over plain HTTP
 docker compose up --build                         # app at http://localhost:8080
 ```
@@ -59,5 +64,6 @@ docker compose up --build                         # app at http://localhost:8080
 - **Tests never reach real services.** The `tests/conftest.py` guard fails any test that tries to post to Discord; don't remove it.
 - **Tests with changes.** Add or update tests for any behavior change, in `tests/unit/` or `tests/integration/` (a test anywhere else is rejected); a new user-facing flow also gets a journey in `tests/integration/test_workflows.py`. Run `pytest` (on SQLite, and on Postgres for database changes) and the frontend tests before saying you're done.
 - **No secrets in the repo.** Configuration comes from environment variables. `.env` is gitignored; the production `.env` lives only on the server.
+- **The MCP server only calls the public API.** It must not import backend code or touch the database, and it defaults to the local backend because `log_steps` writes data.
 - **Deploying is merging.** Every push to `main` is tested and then deployed by CI. Work on a branch and open a pull request; don't push to `main` directly.
 - **Record AI-assisted work** in [docs/ai-workflow.md](docs/ai-workflow.md): what was asked, what was checked, and what was found.

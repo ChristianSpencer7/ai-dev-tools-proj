@@ -111,7 +111,23 @@ Every backlog task followed the same loop:
 | A test file left directly in `tests/` would run in neither CI step | Reasoning about the split | `conftest.py` rejects test files outside the two folders |
 | The AI's comment claimed a misspelled `pytest -m` marker would be an error; it silently selects nothing | Trying it | The comment and the docs now say so, and recommend the folder form |
 
+### 2026-10-23 to 10-24: Task 12, the MCP server
 
+- **Prompt:** *"let's move to task 12"*. The developer accepted three recommendations: Python with the official SDK, the **local backend by default** (since `log_steps` writes data and the API has no logins), and **one family**, with members found by name.
+- **Delegated:** the package, an API client, three tools, tests against a fake app and the real backend, a CI job, `.mcp.json`, and docs.
+- **Developer's check:** in a new Claude Code conversation, asked *"Who's winning this week on the step leaderboard?"* and *"Log 8,000 steps for Dad today"*. Claude Code called `get_leaderboard` and `log_steps` on its own. Reading the local backend directly confirmed Dad's new entry and his place on the board. That was the backlog's done check.
+- **What verification caught:**
+
+| Problem | How it was caught | Fix |
+| --- | --- | --- |
+| The MCP SDK is now version 2, where `FastMCP` (in most examples) is renamed `MCPServer` | Reading the installed package before writing code | Written against version 2, pinned `mcp>=2.3,<3` |
+| No `tzdata`, so "today, Eastern" would fail on Windows | The first check against the backend failed | Added to the dependencies |
+| The "this week" note compared the day with the first of the month | Reading the code back before testing | Compares with this week's Monday |
+| `httpx` logged a line per request into the client's MCP logs | Calling the tools | Turned down to warnings |
+| End-to-end tests skip without the backend, which in CI would pass while testing nothing | Reasoning about the skip | CI sets `STEPBOARD_REQUIRE_BACKEND=1`, which turns the skip into a failure |
+| Claude Code didn't ask before loading the project's server | Reported by the developer | Not a fault, per Claude Code's docs; recorded as a security note for task 15 |
+
+### Mistakes the AI made, and how they were caught
 
 Verification found these before they caused harm. They're recorded because catching them is the point of the loop.
 
@@ -122,6 +138,7 @@ Verification found these before they caused harm. They're recorded because catch
 - Restoring files after mutation checks changed their line endings. Caught by `git status`; files restored byte for byte from then on.
 - Two of task 13's mutation checks were flawed: one turned the code into a crash, the other lacked an import and failed with `NameError`, so neither tested what it claimed. Spotted from the `ERROR`s in the results; one was redone properly and the other dropped (its case was already covered).
 - A commit meant to hold only `docs/backlog.md` also took 13 test-file moves that `git mv` had already staged. Caught by checking what the next commit contained. With the developer's agreement, the two commits were rebuilt and the branch replaced on GitHub with `--force-with-lease`. Since then the AI checks what's staged before committing only part of the changes.
+- Adding the task 13 entry replaced this section's heading instead of going in front of it, so this list read as part of task 13 (merged in pull request #3). Caught when the next entry couldn't find the heading; restored with task 12's entry.
 
 ## Decisions made by the developer
 
@@ -136,6 +153,8 @@ Verification found these before they caused harm. They're recorded because catch
 | Contract tests | Routes only, or also responses | Both |
 | Host | VPS with Docker Compose, Render, Fly.io | DigitalOcean VPS |
 | Web address | sslip.io, or a domain | sslip.io |
+| Unit vs integration tests | Unit = no database at all, or unit = one module called directly | One module called directly; integration = through the HTTP API |
+| MCP server | Language; local or live backend by default; any family or one | Python with the official SDK; local by default; one family, members found by name |
 
 ## Adding an entry
 
