@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import warnings
 from pathlib import Path
 
 import dj_database_url
@@ -194,6 +195,9 @@ USE_TZ = True
 STATIC_URL = 'static/'
 # collectstatic copies the admin's and DRF's CSS and JavaScript here; WhiteNoise serves them from gunicorn.
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# The Docker image runs collectstatic; a fresh clone doesn't have the folder, and runserver serves the files itself.
+# Without this, WhiteNoise warns "No directory at: .../staticfiles/" on every request there and in every test.
+warnings.filterwarnings('ignore', message='No directory at', category=UserWarning)
 STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
     # Compressed, without the manifest: the manifest version fails if a page renders before collectstatic.

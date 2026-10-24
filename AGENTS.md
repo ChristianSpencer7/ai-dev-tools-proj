@@ -21,11 +21,16 @@ A family step leaderboard: React (Vite) frontend, Django + Django REST Framework
 | `docker-compose.prod.yml`, `Caddyfile`, `scripts/deploy.sh` | Production on top of the local stack: Caddy for HTTPS; see [docs/deployment.md](docs/deployment.md) |
 | `mcp-server/`, `.mcp.json` | MCP server giving AI assistants `get_leaderboard`, `list_members` and `log_steps`, through the public API; registered for Claude Code. See [mcp-server/README.md](mcp-server/README.md) |
 | `.claude/`, `agent-hooks/` | Claude Code's project settings: deny rules for reading `.env`, hooks that block changes to `.env`, databases and committed migrations and run the contract tests after API edits, the `add-api-endpoint` skill, and the read-only `leaderboard-rules-reviewer` subagent. See [docs/agent-extension-pack.md](docs/agent-extension-pack.md) and [docs/permissions.md](docs/permissions.md) |
-| `.github/workflows/ci.yml` | Tests on SQLite and Postgres, frontend, the MCP server, Docker builds, then deploys `main` |
+| `.github/workflows/ci.yml` | Tests on SQLite and Postgres, frontend, the MCP server, the agent-hook and ops tests, security scans (Bandit, pip-audit, npm audit, gitleaks; Trivy after the image builds), Docker builds, then deploys `main` |
+| `security/` | Scan output and findings, the PR audit, the agent pack's risks, and [ai-policy.md](security/ai-policy.md) |
+| `ops/` | `collect.sh` (health report), `drill-*.sh` (planned failures), `redact.py` (cleans server output; anything from the server goes through it before an AI sees it), `diagnosis/`, and the [runbook](ops/runbook.md) |
 
 ## Commands
 
 ```sh
+# Python 3.12+, Node 20.19+ (24 LTS in CI and Docker). The backend's virtual environment is .venv at the
+# repository root (python -m venv .venv); the contract-check hook looks for it there.
+
 # Backend (from backend/, with the virtual environment active)
 pip install -e ".[dev]"
 python manage.py migrate
@@ -35,12 +40,13 @@ pytest tests/unit                                 # must be run from backend/
 pytest tests/integration
 pytest                                            # both
 python manage.py makemigrations --check --dry-run  # fails if a migration is missing
+python -m pytest ../agent-hooks/tests ../ops/tests -p no:django   # the hooks and ops/redact.py
 
 # The same tests on Postgres (PowerShell; a local Postgres on port 5432)
 $env:DATABASE_URL = "postgres://stepboard:stepboard@localhost:5432/stepboard"; pytest; Remove-Item Env:DATABASE_URL
 
 # Frontend (from frontend/)
-npm install
+npm ci
 npm test
 npm run dev                                       # http://localhost:5173, /api goes to port 8000
 npm run build
