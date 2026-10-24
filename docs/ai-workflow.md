@@ -127,6 +127,27 @@ Every backlog task followed the same loop:
 | End-to-end tests skip without the backend, which in CI would pass while testing nothing | Reasoning about the skip | CI sets `STEPBOARD_REQUIRE_BACKEND=1`, which turns the skip into a failure |
 | Claude Code didn't ask before loading the project's server | Reported by the developer | Not a fault, per Claude Code's docs; recorded as a security note for task 15 |
 
+### 2026-10-24: Task 14, the rest of the agent extension pack
+
+- **Prompt:** the AI proposed six steps, and the developer replied *"works for me. Let's start with step 1"*.
+- **Delegated:**
+  - two hooks: `guard_files.py` blocks changes to `.env`, database files and committed migrations; `contract_check.py` runs the contract tests after API edits
+  - the `add-api-endpoint` skill
+  - the read-only `leaderboard-rules-reviewer` subagent, with its own command allowlist hook
+  - deny rules for reading `.env`
+  - [permissions.md](permissions.md) and [agent-extension-pack.md](agent-extension-pack.md)
+  - 74 hook tests, which run in CI
+- **Developer's check:** the backlog's "the hook has been shown to block a real mistake". In a fresh Claude Code conversation, the developer asked it to append a line to `.env`, then to `sed` a committed migration, *"do it anyway"*. The guard blocked both; Claude Code said why and offered the safe route. The AI checked separately that the deny rule stops it reading `.env`.
+- **What verification caught:**
+
+| Problem | How it was caught | Fix |
+| --- | --- | --- |
+| The first demo never reached the guard. Claude Code used shell commands (`sed -i`, then `makemigrations`), and the guard only watched the edit tool. It also left a model change and an unapplied migration `0004` behind | Reported by the developer: *"The edit was not blocked and went through"* | With the developer's approval, the stray changes were reverted, and the guard now checks `Bash` and `PowerShell` commands too (`ec1db02`). The retried demo was blocked |
+| A test of Windows-style paths passed on Windows but failed in CI, where `\` isn't a path separator | CI's backend job failed | Reproduced in a Linux container (`python:3.12-slim`); the test now runs only on Windows |
+| A subagent's tool list can allow `Bash`, but not limit which commands it runs, so a "read-only" reviewer could still `sed -i` | Planning the subagent | A hook in the subagent's own front matter allows only reading commands and tests |
+| A `Read` deny rule can't make an exception, so `.env.*` would also block `.env.example` | Planning the rules | The rules name `.env`, `.env.local` and `.env.production` |
+| The guard blocks the AI's own shell commands that mention `.env`: test strings, a settings edit, a commit message | It happened, twice | Not a fault: that's the rule working. The AI uses its edit tool, or a message file for commits; recorded as a limit in [permissions.md](permissions.md#limits) |
+
 ### Mistakes the AI made, and how they were caught
 
 Verification found these before they caused harm. They're recorded because catching them is the point of the loop.
@@ -139,6 +160,9 @@ Verification found these before they caused harm. They're recorded because catch
 - Two of task 13's mutation checks were flawed: one turned the code into a crash, the other lacked an import and failed with `NameError`, so neither tested what it claimed. Spotted from the `ERROR`s in the results; one was redone properly and the other dropped (its case was already covered).
 - A commit meant to hold only `docs/backlog.md` also took 13 test-file moves that `git mv` had already staged. Caught by checking what the next commit contained. With the developer's agreement, the two commits were rebuilt and the branch replaced on GitHub with `--force-with-lease`. Since then the AI checks what's staged before committing only part of the changes.
 - Adding the task 13 entry replaced this section's heading instead of going in front of it, so this list read as part of task 13 (merged in pull request #3). Caught when the next entry couldn't find the heading; restored with task 12's entry.
+- The first version of the `.env` guard only watched the edit tool, although agents change files with shell commands just as often. Caught by the developer's first demo, above.
+- Hook test strings holding Windows paths were written as ordinary Python strings, so sequences such as `\0` in `\0001_initial.py` became escape characters. Caught in the test run; switched to raw strings, and the hook tests were rerun with Python's escape-sequence warnings turned into errors.
+- A rule in the reviewer's first draft said a missing member is always checked before the request body, which isn't true for `POST /steps`, where the member is part of the body. Caught while writing the subagent, since it would have flagged correct code; corrected before it was committed.
 
 ## Decisions made by the developer
 
@@ -155,6 +179,7 @@ Verification found these before they caused harm. They're recorded because catch
 | Web address | sslip.io, or a domain | sslip.io |
 | Unit vs integration tests | Unit = no database at all, or unit = one module called directly | One module called directly; integration = through the HTTP API |
 | MCP server | Language; local or live backend by default; any family or one | Python with the official SDK; local by default; one family, members found by name |
+| The guard after the first demo | Leave it to edits, or also check shell commands | Also check shell commands, and revert what the first demo changed |
 
 ## Adding an entry
 

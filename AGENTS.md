@@ -20,6 +20,7 @@ A family step leaderboard: React (Vite) frontend, Django + Django REST Framework
 | `docker-compose.yml` | Local stack: Postgres, backend (gunicorn), scheduler, frontend (nginx) |
 | `docker-compose.prod.yml`, `Caddyfile`, `scripts/deploy.sh` | Production on top of the local stack: Caddy for HTTPS; see [docs/deployment.md](docs/deployment.md) |
 | `mcp-server/`, `.mcp.json` | MCP server giving AI assistants `get_leaderboard`, `list_members` and `log_steps`, through the public API; registered for Claude Code. See [mcp-server/README.md](mcp-server/README.md) |
+| `.claude/`, `agent-hooks/` | Claude Code's project settings: deny rules for reading `.env`, hooks that block changes to `.env`, databases and committed migrations and run the contract tests after API edits, the `add-api-endpoint` skill, and the read-only `leaderboard-rules-reviewer` subagent. See [docs/agent-extension-pack.md](docs/agent-extension-pack.md) and [docs/permissions.md](docs/permissions.md) |
 | `.github/workflows/ci.yml` | Tests on SQLite and Postgres, frontend, the MCP server, Docker builds, then deploys `main` |
 
 ## Commands
