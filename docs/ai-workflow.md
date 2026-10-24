@@ -214,6 +214,33 @@ Every backlog task followed the same loop:
 - **Predicted wrongly:** that each worker would fail one more request on a dead connection after the database came back (`conn_max_age=600`). It didn't; Django drops a connection after an error.
 - **Confirmed after merging** (pull request #7): the developer ran the database drill on production again. The logs named the cause this time, with 48 `OperationalError: failed to resolve host 'db'` lines and an `ERROR django.request` for every failed request, where before there were only "500"s. That run also exposed four problems in the drill script itself, fixed on `ops-drill-followup` and listed below.
 
+### 2026-10-24: Task 18, the README and an end-to-end run
+
+- **Prompt:** *"let's move to task 18"*. The developer chose both checks the AI proposed: the AI's own run in clean environments, then the developer following the README as a newcomer would.
+- **Delegated:**
+  - rewriting the README for the Django version: the problem, a walkthrough, the architecture, the database in each environment, setup, tests, deployment, configuration, and links to the rest
+  - updating `AGENTS.md` and `docs/plan.md`, which still said FastAPI
+  - the end-to-end runs, and fixing what they found
+- **The AI's run**, from `git clone` of GitHub, not the working copy:
+
+| Path | Environment | Result |
+| --- | --- | --- |
+| Docker | The AI's machine with the build cache cleared and an empty database | Built in 109 s; migrations ran and the demo was seeded on first start. Every step of the README's walkthrough worked through the app's `/api`, as did the browsable API, the admin's CSS and `createsuperuser` |
+| Without Docker | A clean Linux container with only Python 3.12, Node 24 and git, as an ordinary user | The README's commands were **extracted from its own code blocks** and run as written: both servers, the Vite proxy, and every command in its Tests table (168 backend, 92 hook and ops, 6 frontend, 44 MCP tests) |
+
+- **The developer's run**, on their Windows machine, in a new folder, following only the README: the Docker path, then the backend and frontend without Docker, then the tests. Everything ran in the end; the developer reported the tests passing. Where they got stuck is the most useful part of the task.
+- **What the runs found:**
+
+| Problem | Found by | Fix |
+| --- | --- | --- |
+| The README described the FastAPI prototype: `uvicorn`, `python -m stepboard.seed`, and a `/docs` page that doesn't exist in Django | Checking each claim before rewriting | Rewritten; every command and URL checked in the runs |
+| A fresh clone gave **104 warnings** in the tests (and one per request in `runserver`): WhiteNoise warns that `backend/staticfiles/`, which only the Docker build creates, is missing. Never seen on the AI's machine, which had the folder | The clean-environment run | That one message is filtered, in `settings.py` and `pytest.ini`; a fresh clone now gives "168 passed" with no warnings |
+| **The activation line put macOS/Linux first** (`source .venv/bin/activate`, Windows in a comment), so PowerShell rejected it | **The developer**, copying it as written | A table with a command for PowerShell, Command Prompt and macOS/Linux, and the execution-policy fix |
+| The frontend block began `cd ai-dev-tools-proj/frontend`, which only works from the folder above the project | **The developer**, who was already in the project folder | It starts from the project folder: `cd frontend` |
+| "When the logs settle" didn't say what ready looks like, and Postgres's first-start locale warning looks alarming | **The developer's** Docker output | It says what ready looks like, and that the warning is normal |
+| No steps for connecting Discord, only a table row | **The developer's** question | A "Connect Discord" section: making the webhook, `.env`, testing it, and that the URL works like a password |
+| A reader who did the Docker section first would clone twice; `python` is `python3` on macOS and many Linux systems | The developer's question; reasoning | Both said in the README |
+
 ### Mistakes the AI made, and how they were caught
 
 Verification found these before they caused harm. They're recorded because catching them is the point of the loop.
@@ -243,6 +270,10 @@ Verification found these before they caused harm. They're recorded because catch
 - The runbook's error summary kept each line's timestamp, so `uniq -c` counted every line separately. Caught by running it on real logs; the runbook shows the fixed command's real output. The digest-times command in `docs/deployment.md` had a similar bug, found the same way and fixed.
 - The guard blocked the AI's own commands three times, for mentioning `.env` in a commit message, a script comment and README text. Not a fault; worked around with message files and the edit tool, as in task 14.
 - **The drill reported a recovery that hadn't happened.** "Backend healthy again after: 5s" came from a text match on `(healthy)` that also matched the database's status on the same line; the run's own last table showed the backend still `(unhealthy)`. The local rehearsals hadn't caught it, because with checks every 3 seconds the backend really was healthy by then. Caught by reading the production output against itself. It also counted the drill's own probes as Docker's health checks.
+- **To stop a test server, the AI ran a command that could have force-closed every Python process on the developer's machine** (task 18): `taskkill /F /IM python.exe` with a filter meant to narrow it. It matched nothing. The developer's three MCP server sessions were still running, and the test server was stopped by the next, port-specific command. Caught by checking straight afterwards what was still running. Since then, processes are stopped only by their exact ID or port.
+- The first end-to-end Docker run wasn't clean: the clone's folder had the same name as the working copy, so Compose reused the working copy's database. Caught from the leftover drill digests; rerun after removing the volume. The README now tells readers about the same thing.
+- The first filter for the WhiteNoise warning named the module that raises it, but Python attributes the warning to Django's module, so it matched nothing. Caught by rerunning the tests without the static folder; fixed to match the message.
+- The end-to-end script was generated on Windows with Windows line endings, which bash rejects. Caught on its first run.
 - **A dropped SSH session could have left the production database stopped.** The drill's safety traps were in a subshell, so a hangup reaching the main shell first ended the script without restarting the database. The AI had claimed the database "is started again however the script ends", without testing a hangup. Caught when the developer pasted a partial output mid-drill and the AI checked what would happen if the session dropped. In a local test the database did stay down; after the fix, it came back within about 3 seconds.
 
 ## Decisions made by the developer
@@ -268,6 +299,7 @@ Verification found these before they caused harm. They're recorded because catch
 | DevOps tool for the diagnosis | Docker Compose, or others the course used | Docker Compose |
 | Where to run the planned failures | Production, or a local copy of the stack | Production (the webhook drill without touching the server's settings) |
 | Which diagnosis findings to fix now | Six, from log noise to JSON errors | Health checks, log limits, build cache, error logging; the rest recorded as known gaps |
+| Who checks the README works | The AI in clean environments, or a person following it | Both |
 
 ## Adding an entry
 

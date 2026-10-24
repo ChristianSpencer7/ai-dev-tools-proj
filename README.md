@@ -12,7 +12,7 @@ A family wants a light, friendly competition around daily walking. Everyone has 
 - [Develop without Docker](#develop-without-docker)
 - [Tests](#tests)
 - [Deployment and CI/CD](#deployment-and-cicd)
-- [Configuration](#configuration)
+- [Configuration](#configuration), and [connecting Discord](#connect-discord-optional)
 - [AI-assisted development](#ai-assisted-development)
 - [Security and operations](#security-and-operations)
 - [Repository layout](#repository-layout)
@@ -92,7 +92,7 @@ cd ai-dev-tools-proj
 docker compose up --build
 ```
 
-The first build takes a few minutes. When the logs settle:
+The first build takes a few minutes, then the logs scroll by. It's ready once the backend logs its first health check, `"GET /health HTTP/1.1" 200`, and the scheduler prints when the digests run next. On the very first start, Postgres also prints warnings such as `no usable system locales were found`; those are normal. Then:
 
 - **The app:** <http://localhost:8080>
 - **The API:** <http://localhost:8000/families>, for example (Django REST Framework's browsable pages)
@@ -104,13 +104,27 @@ The first build takes a few minutes. When the logs settle:
 
 You need **Python 3.12** or newer and **Node.js 20.19** or newer (24 LTS recommended), plus Git. The backend uses SQLite, so there's no database to install. Check with `python --version` and `node --version`; on macOS and many Linux systems the first is `python3`, so use that wherever these steps say `python`, until the virtual environment is active.
 
-**Backend**, at <http://localhost:8000>:
+Stop the Docker version first if it's running (`docker compose down`): both use port 8000.
+
+**1. Get the code and make a virtual environment.** Already cloned it for Docker? Skip the first two lines.
 
 ```sh
 git clone https://github.com/ChristianSpencer7/ai-dev-tools-proj.git
 cd ai-dev-tools-proj
 python -m venv .venv                 # at the repository root: the agent hooks look for it there
-source .venv/bin/activate            # Windows (PowerShell): .venv\Scripts\Activate.ps1
+```
+
+**2. Activate it**, in the same terminal. Your prompt then starts with `(.venv)`.
+
+| On | Command |
+| --- | --- |
+| Windows, PowerShell | `.venv\Scripts\Activate.ps1`. If it says running scripts is disabled, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then try again |
+| Windows, Command Prompt | `.venv\Scripts\activate.bat` |
+| macOS, Linux | `source .venv/bin/activate` |
+
+**3. The backend**, at <http://localhost:8000>. It keeps running in this terminal:
+
+```sh
 cd backend
 pip install -e ".[dev]"
 python manage.py migrate
@@ -118,19 +132,21 @@ python manage.py seed_demo           # the Demo Family, invite code DEMO
 python manage.py runserver
 ```
 
-**Frontend**, at <http://localhost:5173>, in a second terminal. It sends `/api` to the backend on port 8000:
+**4. The frontend**, at <http://localhost:5173>. Open a second terminal **in the project folder** (`ai-dev-tools-proj`); no virtual environment needed. It sends `/api` to the backend on port 8000:
 
 ```sh
-cd ai-dev-tools-proj/frontend
+cd frontend
 npm ci
 npm run dev
 ```
+
+If `npm ci` warns `EBADENGINE`, or `npm run dev` fails, check `node --version`: it needs 20.19 or newer. After installing a newer Node, open a new terminal.
 
 ## Tests
 
 | What | Command | Where |
 | --- | --- | --- |
-| Backend unit tests: one module at a time | `pytest tests/unit` | `backend/`, with the virtual environment active |
+| Backend unit tests: one module at a time | `pytest tests/unit` | `backend/`, with the virtual environment active ([step 2](#develop-without-docker)) |
 | Backend integration tests: through the HTTP API, including whole user journeys and the `openapi.yaml` contract | `pytest tests/integration` | `backend/` |
 | Both, and a missing-migration check | `pytest` and `python manage.py makemigrations --check --dry-run` | `backend/` |
 | Frontend tests and build | `npm test` and `npm run build` | `frontend/` |
@@ -155,10 +171,21 @@ Everything is set by environment variables, all optional for local use. To chang
 
 | Setting | Default | What it's for |
 | --- | --- | --- |
-| `DISCORD_WEBHOOK_URL` | none | Posts digests to a Discord channel (Channel settings → Integrations → Webhooks). Without it, digests appear only on the Messages page |
+| `DISCORD_WEBHOOK_URL` | none | Posts digests to a Discord channel; see [below](#connect-discord-optional). Without it, digests appear only on the Messages page |
 | `DATABASE_URL` | SQLite file; Postgres in Docker | Which database |
 | `DJANGO_DEBUG`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` | debug on, a local-only key, localhost | Django; production sets all three |
 | `SITE_ADDRESS`, `POSTGRES_PASSWORD` | none | Production only ([docs/deployment.md](docs/deployment.md)) |
+
+### Connect Discord (optional)
+
+1. **Make a webhook.** In the Discord channel for the digests: **Edit Channel** → **Integrations** → **Webhooks** → **New Webhook**, then **Copy Webhook URL**. This needs the "Manage Webhooks" permission.
+2. **Give it to the app.** In the project folder, copy `.env.example` to `.env` (PowerShell: `Copy-Item .env.example .env`), and set `DISCORD_WEBHOOK_URL=` to the URL. Then `docker compose up -d`, which restarts the backend and scheduler with it; without Docker, restart `runserver`.
+3. **Try it.** In the app, **Messages** → **Send weekly digest now**. It should appear in the channel, with the status `sent` in the app. If it says `failed`, the [runbook](ops/runbook.md#a-digest-didnt-arrive) says why.
+
+From then on, the scheduler posts every Monday and on the 1st. On the live site, the URL goes in the server's `.env` instead ([docs/deployment.md](docs/deployment.md#changing-a-secret)).
+
+- **The URL works like a password:** anyone with it can post to the channel. It belongs only in `.env`, which is never committed; don't paste it into an AI chat. If it leaks, delete the webhook in Discord and make a new one.
+- **One webhook serves the whole app,** so every family's digests go to the same channel. That's why the scheduler leaves out the Demo Family.
 
 ## AI-assisted development
 
