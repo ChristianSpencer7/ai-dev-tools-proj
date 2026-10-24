@@ -30,6 +30,11 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging:  # as the other services (docker-compose.yml's x-logging, which can't be referenced from this file)
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "80:80"
       - "443:443"

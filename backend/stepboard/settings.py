@@ -69,6 +69,10 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
     "loggers": {
         "leaderboard": {"handlers": ["console"], "level": "INFO"},  # digests, Discord failures, the scheduler
+        # Unhandled errors (500s) with their tracebacks. Django's default sends these only to admin email when
+        # DEBUG is off, and none is set up, so the logs showed "500" and nothing else (ops/diagnosis/, finding 5).
+        # ERROR only: 4xx responses are logged by Django as warnings, and those are the client's mistakes.
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
         "apscheduler": {"handlers": ["console"], "level": "INFO"},
         # httpx logs every request with its full URL at INFO; for Discord that URL is the webhook secret.
         "httpx": {"level": "WARNING"},
