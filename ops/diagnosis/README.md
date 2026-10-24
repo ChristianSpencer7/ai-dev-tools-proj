@@ -6,7 +6,8 @@ Real output from the production server, collected with Docker Compose by [ops/co
 | --- | --- |
 | [2026-10-24-production-report.txt](2026-10-24-production-report.txt) | The health report, 09:14 UTC |
 | [2026-10-24-production-drill-database.txt](2026-10-24-production-drill-database.txt) | The database drill on production, straight after |
-| [2026-10-24-rehearsal-local-1.txt](2026-10-24-rehearsal-local-1.txt), [-2](2026-10-24-rehearsal-local-2.txt) | The same drill rehearsed on the local stack first (Docker Desktop on Windows) |
+| [2026-10-24-production-drill-webhook.txt](2026-10-24-production-drill-webhook.txt) | The bad-webhook drill on production, 17:34 UTC |
+| [2026-10-24-rehearsal-local-1.txt](2026-10-24-rehearsal-local-1.txt), [-2](2026-10-24-rehearsal-local-2.txt), [-webhook](2026-10-24-rehearsal-local-webhook.txt) | The drills rehearsed on the local stack first (Docker Desktop on Windows) |
 
 ## The healthy server
 
@@ -51,3 +52,16 @@ The database was stopped for 81 seconds on the live site, which holds only the D
 **Predicted but didn't happen:** that each worker would fail one more request on a dead connection after the restart (`conn_max_age=600`). Django drops a connection after an error, so none was reused.
 
 **The rehearsal and production differed.** Locally, each failing request took **7.5 s** and "unhealthy" took about 2 minutes. On the Linux server, the database's absence was noticed at once. The slow failures were Docker Desktop's name lookup for a stopped container, not the app. The rehearsal tested the script; only production showed how the app behaves.
+
+## The bad-webhook drill
+
+Two Demo Family digests were sent from one-off containers with a broken webhook. The running backend kept its own setting, and the site stayed up.
+
+| Case | Logged | The digest |
+| --- | --- | --- |
+| Discord refuses the webhook (a made-up token) | `WARNING leaderboard.discord: Discord webhook post failed: HTTPStatusError (HTTP 404)` | Saved, shown on the Messages page, `discord_status=failed` |
+| The webhook's host can't be reached (`.invalid`) | `WARNING leaderboard.discord: Discord webhook post failed: ConnectError` | Saved, shown, `discord_status=failed` |
+
+- **"A failed post must never lose a digest" holds** on the real deployment, for both kinds of failure.
+- **"The webhook URL must never be logged" holds.** A marker in both fake URLs appeared in 0 lines of the drill's output and of every service's logs, counted before redaction, so `redact.py` couldn't have hidden a leak.
+- **Production has no webhook set.** The running backend reports "not set", so real digests go only to the in-app Messages page. That's allowed by design ("Discord stays optional"), but it's worth knowing: nobody is told a digest is ready.
