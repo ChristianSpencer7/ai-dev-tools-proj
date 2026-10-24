@@ -11,3 +11,5 @@ node_modules/
 dist/
 db.sqlite3
 backend/staticfiles/
+# Claude Code's personal settings (your own permission choices); the shared ones are .claude/settings.json
+.claude/settings.local.json

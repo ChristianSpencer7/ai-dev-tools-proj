@@ -72,7 +72,7 @@ The second file needs the backend installed: `pip install -e ../backend` in this
 
 ## Security
 
-For the security review (task 15):
+The full notes are in [security/agent-extension-pack.md](../security/agent-extension-pack.md), and the security review of this server's pull request, with what it fixed, is in [security/pr-audit.md](../security/pr-audit.md). In short:
 
 - **`log_steps` writes data, and the app's API has no logins.** Anyone who can run this server against an address can change that family's boards. Hence the local default, and one family per server.
 - **The tools act on what the assistant reads.** Text the assistant sees elsewhere (a web page, a file, an issue) could try to instruct it to log steps. Claude Code's permission prompt for destructive tools is the check; don't allow `log_steps` without asking.
