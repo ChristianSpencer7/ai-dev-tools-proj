@@ -16,6 +16,20 @@ Raw output of each scanner, run on 2026-10-24 against branch `security-scans` (f
 | `trivy-stepboard-backend.txt` | Trivy 0.76.1 | The backend image: Debian packages and Python packages |
 | `trivy-ai-dev-tools-proj-frontend.txt` | Trivy 0.76.1 | The frontend image: Alpine packages (nginx base) |
 
+## In CI
+
+Every push and pull request runs the same scanners ([ci.yml](../../.github/workflows/ci.yml)): Bandit, pip-audit, npm audit and gitleaks in the **Security scans** job, and Trivy in **Docker images**, after the images are built. Each prints its whole report. The build fails on:
+
+| Scanner | Fails on |
+| --- | --- |
+| Bandit | High severity |
+| pip-audit | Any known vulnerability (its sources give no severity), in the backend's and MCP server's dependencies, dev tools included |
+| npm audit | High or critical |
+| gitleaks | Any secret, in any commit |
+| Trivy | High or critical **with a released fix**. Findings with no fix yet, like the backend's Debian packages, are reported but don't fail, since a rebuild can't remove them ([findings.md](../findings.md#accepted-debian-packages-in-the-backend-image)) |
+
+Deploying waits for both jobs. Each gate was checked both ways before it was added: it passes on the current code, and fails on a known problem (Bandit: a planted `shell=True`; npm audit: the lock file from before the fixes; Trivy: `nginx:1.27-alpine`; gitleaks: a planted token).
+
 ## Running them again
 
 From the repository root, with Docker running. The scanners run in their own environment or container, not the project's.
