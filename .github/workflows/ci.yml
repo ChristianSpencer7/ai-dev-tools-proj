@@ -65,6 +65,9 @@ jobs:
         # Runs even if the unit tests failed, so one run shows the state of both.
         if: ${{ !cancelled() }}
         run: pytest tests/integration
+      - name: Agent hook tests (agent-hooks/, run as Claude Code runs them)
+        if: matrix.database == 'sqlite'
+        run: python -m pytest ../agent-hooks/tests -p no:django
       - name: Production settings pass Django's deployment checks
         if: matrix.database == 'postgres'
         env:
