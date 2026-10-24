@@ -13,3 +13,5 @@ compose() { docker compose -f docker-compose.yml -f docker-compose.prod.yml "$@"
 compose up -d --build --remove-orphans --wait --wait-timeout 300
 compose ps
 docker image prune -f > /dev/null  # old images from earlier deploys
+# Build cache older than a week; the recent part keeps builds fast. It had grown to 1.1 GB (ops/diagnosis/).
+docker builder prune -f --filter until=168h > /dev/null

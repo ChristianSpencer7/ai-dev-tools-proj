@@ -8,6 +8,7 @@ A web app where a family logs daily steps and competes on a weekly board (Monday
 - Behavior and acceptance criteria: [product-spec.md](product-spec.md)
 - API contract: [openapi.yaml](openapi.yaml)
 - Notes for AI coding agents: [AGENTS.md](AGENTS.md)
+- Which AI tools may be used, with what data, and when a person reviews: [security/ai-policy.md](security/ai-policy.md)
 
 ## Run it
 

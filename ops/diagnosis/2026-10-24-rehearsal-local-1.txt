@@ -1,0 +1,107 @@
+
+===== Drill: stop the database =====
+Started: 2026-10-24 09:01:51 UTC, deployed commit 169e703
+
+===== Before =====
+09:01:52  /api/health 200  /api/families 200  / 200  | backend: Up 7 seconds (healthy) | db: Up 10 seconds (healthy)
+
+===== Stopping the database =====
+ Container ai-dev-tools-proj-db-1  Stopping
+ Container ai-dev-tools-proj-db-1  Stopped
+
+===== During: every 5 seconds for 75s =====
+09:01:54  /api/health 500  /api/families 500  / 200  | backend: Up 9 seconds (healthy) | db: Exited (0) 1 second ago
+09:02:00  /api/health 500  /api/families 500  / 200  | backend: Up 30 seconds (healthy) | db: Exited (0) 22 seconds ago
+09:02:22  /api/health 500  /api/families 500  / 200  | backend: Up 53 seconds (healthy) | db: Exited (0) 45 seconds ago
+09:02:44  /api/health 500  /api/families 500  / 200  | backend: Up About a minute (healthy) | db: Exited (0) About a minute ago
+09:03:05  /api/health 500  /api/families 500  / 200  | backend: Up About a minute (healthy) | db: Exited (0) About a minute ago
+09:03:26  /api/health 500  /api/families 500  / 200  | backend: Up About a minute (healthy) | db: Exited (0) About a minute ago
+09:03:48  /api/health 500  /api/families 500  / 200  | backend: Up 2 minutes (healthy) | db: Exited (0) 2 minutes ago
+09:04:09  /api/health 500  /api/families 500  / 200  | backend: Up 2 minutes (unhealthy) | db: Exited (0) 2 minutes ago
+09:04:30  /api/health 500  /api/families 500  / 200  | backend: Up 3 minutes (unhealthy) | db: Exited (0) 2 minutes ago
+09:04:52  /api/health 500  /api/families 500  / 200  | backend: Up 3 minutes (unhealthy) | db: Exited (0) 3 minutes ago
+09:05:13  /api/health 500  /api/families 500  / 200  | backend: Up 3 minutes (unhealthy) | db: Exited (0) 3 minutes ago
+09:05:35  /api/health 500  /api/families 500  / 200  | backend: Up 4 minutes (unhealthy) | db: Exited (0) 3 minutes ago
+09:05:56  /api/health 500  /api/families 500  / 200  | backend: Up 4 minutes (unhealthy) | db: Exited (0) 4 minutes ago
+09:06:17  /api/health 500  /api/families 500  / 200  | backend: Up 4 minutes (unhealthy) | db: Exited (0) 4 minutes ago
+09:06:39  /api/health 500  /api/families 500  / 200  | backend: Up 5 minutes (unhealthy) | db: Exited (0) 5 minutes ago
+
+===== What a visitor gets =====
+--- GET /api/health
+HTTP/1.1 500 Internal Server Error
+Content-Type: text/html; charset=utf-8
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+
+--- GET /api/families
+HTTP/1.1 500 Internal Server Error
+Content-Type: text/html; charset=utf-8
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+
+
+===== Containers, with the database stopped =====
+SERVICE     STATE     STATUS
+backend     running   Up 5 minutes (unhealthy)
+db          exited    Exited (0) 5 minutes ago
+frontend    running   Up 5 minutes
+scheduler   running   Up 5 minutes
+
+===== Backend logs since the stop (health checks left out, then counted) =====
+backend-1  | 2026-10-24T09:01:54.399733754Z 172.18.0.5 - - [24/Oct/2026:05:01:54 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:02:15.378986401Z 172.18.0.5 - - [24/Oct/2026:05:02:15 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:02:38.271810495Z 172.18.0.5 - - [24/Oct/2026:05:02:38 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:02:59.383520248Z 172.18.0.5 - - [24/Oct/2026:05:02:59 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:03:20.335082790Z 172.18.0.5 - - [24/Oct/2026:05:03:20 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:03:41.254096855Z 172.18.0.5 - - [24/Oct/2026:05:03:41 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:04:03.943565820Z 172.18.0.5 - - [24/Oct/2026:05:04:03 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:04:24.931723447Z 172.18.0.5 - - [24/Oct/2026:05:04:24 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:04:45.873943757Z 172.18.0.5 - - [24/Oct/2026:05:04:45 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:05:06.894596618Z 172.18.0.5 - - [24/Oct/2026:05:05:06 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:05:29.658811131Z 172.18.0.5 - - [24/Oct/2026:05:05:29 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:05:50.590401832Z 172.18.0.5 - - [24/Oct/2026:05:05:50 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:06:11.457427748Z 172.18.0.5 - - [24/Oct/2026:05:06:11 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:06:32.394298848Z 172.18.0.5 - - [24/Oct/2026:05:06:32 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:06:55.094818707Z 172.18.0.5 - - [24/Oct/2026:05:06:55 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:07:15.981108216Z 172.18.0.5 - - [24/Oct/2026:05:07:15 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+(health checks in that time: 58, of which failed: 58)
+
+===== Starting the database =====
+ Container ai-dev-tools-proj-db-1  Starting
+ Container ai-dev-tools-proj-db-1  Started
+
+===== Recovery: every 3 seconds until the site answers and the backend is healthy again =====
+09:07:18  /api/health 200  /api/families 200  / 200  | backend: Up 5 minutes (unhealthy) | db: Up 1 second (health: starting)
+09:07:22  /api/health 200  /api/families 200  / 200  | backend: Up 5 minutes (healthy) | db: Up 6 seconds (healthy)
+Site answering again after: 2s; backend healthy again after: 6s
+
+===== Backend logs since the restart =====
+backend-1  | 2026-10-24T09:07:18.657369634Z 172.18.0.5 - - [24/Oct/2026:05:07:18 -0400] "GET /families HTTP/1.1" 200 57 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:07:23.253355290Z 172.18.0.5 - - [24/Oct/2026:05:07:23 -0400] "GET /families HTTP/1.1" 200 57 "-" "curl/8.4.0"
+
+===== After =====
+SERVICE     STATE     STATUS
+backend     running   Up 5 minutes (healthy)
+db          running   Up 5 seconds (healthy)
+frontend    running   Up 5 minutes
+scheduler   running   Up 5 minutes
+
+===== Cleanup =====

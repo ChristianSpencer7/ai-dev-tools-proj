@@ -1,0 +1,111 @@
+# ops/drill-database.sh on the production server, 2026-10-24 09:14 UTC, run by the developer as deploy.
+# Pasted back as printed (already redacted by ops/redact.py). Findings: ops/diagnosis/README.md.
+
+===== Drill: stop the database =====
+Started: 2026-10-24 09:14:39 UTC, deployed commit beab695
+
+===== Before =====
+09:14:39  /api/health 200 (0.181162s)  /api/families 200 (0.077009s)  / 200 (0.055896s)  | backend: Up 36 minutes (healthy) | db: Up 26 hours (healthy)
+
+===== Stopping the database =====
+ Container stepboard-db-1 Stopping
+ Container stepboard-db-1 Stopped
+
+===== During: about every 5 seconds for 75s (by the clock: each check can take seconds now) =====
+09:14:40  /api/health 500 (0.108033s)  /api/families 500 (0.117852s)  / 200 (0.091948s)  | backend: Up 36 minutes (healthy) | db: Exited (0) 1 second ago
+09:14:46  /api/health 500 (0.055086s)  /api/families 500 (0.061837s)  / 200 (0.053272s)  | backend: Up 36 minutes (healthy) | db: Exited (0) 6 seconds ago
+09:14:52  /api/health 500 (0.128806s)  /api/families 500 (0.112203s)  / 200 (0.119072s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 13 seconds ago
+09:14:58  /api/health 500 (0.051859s)  /api/families 500 (0.060348s)  / 200 (0.047652s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 18 seconds ago
+09:15:03  /api/health 500 (0.125326s)  /api/families 500 (0.132694s)  / 200 (0.125469s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 24 seconds ago
+09:15:09  /api/health 500 (0.064565s)  /api/families 500 (0.064183s)  / 200 (0.055620s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 30 seconds ago
+09:15:15  /api/health 500 (0.078353s)  /api/families 500 (0.056273s)  / 200 (0.042453s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 35 seconds ago
+09:15:20  /api/health 500 (0.047619s)  /api/families 500 (0.071448s)  / 200 (0.042932s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 41 seconds ago
+09:15:26  /api/health 500 (0.078332s)  /api/families 500 (0.082492s)  / 200 (0.069243s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 47 seconds ago
+09:15:32  /api/health 500 (0.076133s)  /api/families 500 (0.059237s)  / 200 (0.049117s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 52 seconds ago
+09:15:37  /api/health 500 (0.056811s)  /api/families 500 (0.062928s)  / 200 (0.056377s)  | backend: Up 37 minutes (healthy) | db: Exited (0) 58 seconds ago
+09:15:43  /api/health 500 (0.049527s)  /api/families 500 (0.052423s)  / 200 (0.043771s)  | backend: Up 37 minutes (healthy) | db: Exited (0) About a minute ago
+09:15:48  /api/health 500 (0.051157s)  /api/families 500 (0.062836s)  / 200 (0.058618s)  | backend: Up 37 minutes (healthy) | db: Exited (0) About a minute ago
+09:15:54  /api/health 500 (0.102040s)  /api/families 500 (0.111388s)  / 200 (0.109981s)  | backend: Up 38 minutes (unhealthy) | db: Exited (0) About a minute ago
+
+===== What a visitor gets =====
+--- GET /api/health
+HTTP/2 500
+content-type: text/html; charset=utf-8
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+
+--- GET /api/families
+HTTP/2 500
+content-type: text/html; charset=utf-8
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+
+
+===== Containers, with the database stopped =====
+SERVICE     STATE     STATUS
+backend     running   Up 38 minutes (unhealthy)
+caddy       running   Up 26 hours
+db          exited    Exited (0) About a minute ago
+frontend    running   Up 37 minutes
+scheduler   running   Up 37 minutes
+
+===== Backend logs since the stop (health checks left out, then counted) =====
+backend-1  | 2026-10-24T09:14:39.416975661Z 172.18.0.5 - - [24/Oct/2026:05:14:39 -0400] "GET /families HTTP/1.1" 200 57 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:14:40.503201645Z 172.18.0.5 - - [24/Oct/2026:05:14:40 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:14:46.661324898Z 172.18.0.5 - - [24/Oct/2026:05:14:46 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:14:52.310352098Z 172.18.0.5 - - [24/Oct/2026:05:14:52 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:14:58.381951662Z 172.18.0.5 - - [24/Oct/2026:05:14:58 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:04.060378348Z 172.18.0.5 - - [24/Oct/2026:05:15:04 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:10.059665874Z 172.18.0.5 - - [24/Oct/2026:05:15:10 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:15.635891544Z 172.18.0.5 - - [24/Oct/2026:05:15:15 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:21.138962689Z 172.18.0.5 - - [24/Oct/2026:05:15:21 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:26.655467006Z 172.18.0.5 - - [24/Oct/2026:05:15:26 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:32.272115448Z 172.18.0.5 - - [24/Oct/2026:05:15:32 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:37.805833301Z 172.18.0.5 - - [24/Oct/2026:05:15:37 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:43.320660466Z 172.18.0.5 - - [24/Oct/2026:05:15:43 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:49.037425984Z 172.18.0.5 - - [24/Oct/2026:05:15:49 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:15:54.704781138Z 172.18.0.5 - - [24/Oct/2026:05:15:54 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:16:00.700961955Z 172.18.0.5 - - [24/Oct/2026:05:16:00 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+(health checks in that time: 38, of which failed: 37)
+
+===== Starting the database =====
+ Container stepboard-db-1 Starting
+ Container stepboard-db-1 Started
+
+===== Recovery: every 3 seconds until the site answers and the backend is healthy again (at most 3 minutes) =====
+09:16:01  /api/health 500 (0.147451s)  /api/families 500 (0.175354s)  / 200 (0.116628s)  | backend: Up 38 minutes (unhealthy) | db: Up 1 second (health: starting)
+09:16:06  /api/health 200 (0.064952s)  /api/families 200 (0.069016s)  / 200 (0.080485s)  | backend: Up 38 minutes (healthy) | db: Up 5 seconds (healthy)
+Site answering again after: 5s; backend healthy again after: 5s
+
+===== Backend logs since the restart =====
+backend-1  | 2026-10-24T09:16:01.954999952Z 172.18.0.5 - - [24/Oct/2026:05:16:01 -0400] "GET /health HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:16:02.163815395Z 172.18.0.5 - - [24/Oct/2026:05:16:02 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:16:06.197643419Z 172.18.0.5 - - [24/Oct/2026:05:16:06 -0400] "GET /families HTTP/1.1" 200 57 "-" "curl/8.5.0"
+
+===== After =====
+SERVICE     STATE     STATUS
+backend     running   Up 38 minutes (healthy)
+caddy       running   Up 26 hours
+db          running   Up 6 seconds (healthy)
+frontend    running   Up 38 minutes
+scheduler   running   Up 38 minutes
+
+===== Cleanup =====

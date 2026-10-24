@@ -1,0 +1,29 @@
+
+===== Drill: a Discord post that fails =====
+Started: 2026-10-24 09:33:59 UTC, deployed commit fd7aa63, digests as of 2026-10-24
+
+===== The running backend's own webhook setting (only whether one is set), before =====
+not set
+
+===== 1. Discord refuses the webhook (a real Discord address with a made-up token) =====
+2026-10-24 05:34:03,567 WARNING leaderboard.discord: Discord webhook post failed: HTTPStatusError (HTTP 404)
+saved message 3 discord_status failed
+
+===== 2. The webhook's host can't be reached (an .invalid address; nothing is sent) =====
+2026-10-24 05:34:06,676 WARNING leaderboard.discord: Discord webhook post failed: ConnectError
+saved message 4 discord_status failed
+
+===== The two digests, as the app shows them (GET /api/families/1/messages) =====
+id 4  monthly  discord_status=failed         created 2026-10-24T05:34:06.677135-04:00  text: 🏅 All-time Steps — since Sep 21, 2026
+id 3  weekly   discord_status=failed         created 2026-10-24T05:34:03.568242-04:00  text: 📊 Week So Far — Oct 19–24
+
+===== What was logged about the failures =====
+WARNING leaderboard.discord: Discord webhook post failed: HTTPStatusError (HTTP 404)
+WARNING leaderboard.discord: Discord webhook post failed: ConnectError
+
+===== Was either webhook URL logged? (counted before any redaction) =====
+In the drill's own output: 0 lines
+In every service's logs since the drill started: 0 lines
+
+===== The running backend's own webhook setting, after (unchanged) =====
+not set

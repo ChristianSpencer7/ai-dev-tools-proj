@@ -1,0 +1,81 @@
+
+===== Drill: stop the database =====
+Started: 2026-10-24 09:07:54 UTC, deployed commit 169e703
+
+===== Before =====
+09:07:54  /api/health 200 (0.007176s)  /api/families 200 (0.008101s)  / 200 (0.003889s)  | backend: Up 6 minutes (healthy) | db: Up 37 seconds (healthy)
+
+===== Stopping the database =====
+ Container ai-dev-tools-proj-db-1  Stopping
+ Container ai-dev-tools-proj-db-1  Stopped
+
+===== During: about every 5 seconds for 30s (by the clock: each check can take seconds now) =====
+09:07:57  /api/health 500 (0.006606s)  /api/families 500 (0.007271s)  / 200 (0.005025s)  | backend: Up 6 minutes (healthy) | db: Exited (0) 1 second ago
+09:08:03  /api/health 500 (7.574136s)  /api/families 500 (7.554673s)  / 200 (0.003992s)  | backend: Up 6 minutes (healthy) | db: Exited (0) 24 seconds ago
+09:08:25  /api/health 500 (7.552849s)  /api/families 500 (7.552980s)  / 200 (0.004122s)  | backend: Up 6 minutes (healthy) | db: Exited (0) 45 seconds ago
+
+===== What a visitor gets =====
+--- GET /api/health
+HTTP/1.1 500 Internal Server Error
+Content-Type: text/html; charset=utf-8
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+
+--- GET /api/families
+HTTP/1.1 500 Internal Server Error
+Content-Type: text/html; charset=utf-8
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+
+
+===== Containers, with the database stopped =====
+SERVICE     STATE     STATUS
+backend     running   Up 7 minutes (healthy)
+db          exited    Exited (0) About a minute ago
+frontend    running   Up 7 minutes
+scheduler   running   Up 7 minutes
+
+===== Backend logs since the stop (health checks left out, then counted) =====
+backend-1  | 2026-10-24T09:07:56.776662068Z 172.18.0.5 - - [24/Oct/2026:05:07:56 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:08:19.564695730Z 172.18.0.5 - - [24/Oct/2026:05:08:19 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:08:40.466780015Z 172.18.0.5 - - [24/Oct/2026:05:08:40 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+backend-1  | 2026-10-24T09:09:01.517777281Z 172.18.0.5 - - [24/Oct/2026:05:09:01 -0400] "GET /families HTTP/1.1" 500 145 "-" "curl/8.4.0"
+(health checks in that time: 12, of which failed: 12)
+
+===== Starting the database =====
+ Container ai-dev-tools-proj-db-1  Starting
+ Container ai-dev-tools-proj-db-1  Started
+
+===== Recovery: every 3 seconds until the site answers and the backend is healthy again (at most 3 minutes) =====
+09:09:03  /api/health 200 (0.040422s)  /api/families 200 (0.020775s)  / 200 (0.004545s)  | backend: Up 7 minutes (healthy) | db: Up 1 second (health: starting)
+Site answering again after: 3s; backend healthy again after: 3s
+
+===== Backend logs since the restart =====
+backend-1  | 2026-10-24T09:09:04.140018172Z 172.18.0.5 - - [24/Oct/2026:05:09:04 -0400] "GET /families HTTP/1.1" 200 57 "-" "curl/8.4.0"
+
+===== After =====
+SERVICE     STATE     STATUS
+backend     running   Up 7 minutes (healthy)
+db          running   Up 2 seconds (healthy)
+frontend    running   Up 7 minutes
+scheduler   running   Up 7 minutes
+
+===== Cleanup =====

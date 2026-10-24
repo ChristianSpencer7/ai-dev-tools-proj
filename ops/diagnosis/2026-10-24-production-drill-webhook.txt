@@ -1,0 +1,35 @@
+# ops/drill-webhook.sh on the production server, 2026-10-24 17:34 UTC, run by the developer as deploy.
+# Pasted back as printed (already redacted by ops/redact.py). Findings: ops/diagnosis/README.md.
+
+===== Drill: a Discord post that fails =====
+Started: 2026-10-24 17:33:58 UTC, deployed commit beab695, digests as of 2026-10-24
+
+===== The running backend's own webhook setting (only whether one is set), before =====
+not set
+
+===== 1. Discord refuses the webhook (a real Discord address with a made-up token) =====
+ Container stepboard-backend-run-6980c0265b1f Creating
+ Container stepboard-backend-run-6980c0265b1f Created
+2026-10-24 13:34:04,908 WARNING leaderboard.discord: Discord webhook post failed: HTTPStatusError (HTTP 404)
+saved message 1 discord_status failed
+
+===== 2. The webhook's host can't be reached (an .invalid address; nothing is sent) =====
+ Container stepboard-backend-run-d257da2c2055 Creating
+ Container stepboard-backend-run-d257da2c2055 Created
+2026-10-24 13:34:08,455 WARNING leaderboard.discord: Discord webhook post failed: ConnectError
+saved message 2 discord_status failed
+
+===== The two digests, as the app shows them (GET /api/families/1/messages) =====
+id 2  monthly  discord_status=failed         created 2026-10-24T13:34:08.458070-04:00  text: 🏅 All-time Steps — since Sep 21, 2026
+id 1  weekly   discord_status=failed         created 2026-10-24T13:34:04.910161-04:00  text: 📊 Week So Far — Oct 19–24
+
+===== What was logged about the failures =====
+WARNING leaderboard.discord: Discord webhook post failed: HTTPStatusError (HTTP 404)
+WARNING leaderboard.discord: Discord webhook post failed: ConnectError
+
+===== Was either webhook URL logged? (counted before any redaction) =====
+In the drill's own output: 0 lines
+In every service's logs since the drill started: 0 lines
+
+===== The running backend's own webhook setting, after (unchanged) =====
+not set

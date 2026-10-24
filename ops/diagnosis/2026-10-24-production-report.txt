@@ -1,0 +1,177 @@
+# ops/collect.sh on the production server, 2026-10-24 09:14 UTC, run by the developer as deploy, just before the
+# database drill. Pasted back as printed (already redacted by ops/redact.py). Findings: ops/diagnosis/README.md.
+
+===== Report =====
+Taken: 2026-10-24 09:14:21 UTC
+Deployed commit: beab695 Merge pull request #6 from ChristianSpencer7/security-scans (2026-10-24)
+Host uptime: up 3 days, 10 hours, 23 minutes
+
+===== Containers (docker compose ps) =====
+SERVICE     STATE     STATUS                    PORTS
+backend     running   Up 36 minutes (healthy)   8000/tcp
+caddy       running   Up 26 hours               0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp, 0.0.0.0:443->443/udp, [::]:443->443/udp, 2019/tcp
+db          running   Up 26 hours (healthy)     5432/tcp
+frontend    running   Up 36 minutes             80/tcp
+scheduler   running   Up 36 minutes             8000/tcp
+
+===== Resource use (docker stats) =====
+NAME                    CPU %     MEM USAGE / LIMIT     MEM %
+stepboard-scheduler-1   0.00%     55.65MiB / 961.5MiB   5.79%
+stepboard-frontend-1    0.00%     3.277MiB / 961.5MiB   0.34%
+stepboard-backend-1     0.02%     109.6MiB / 961.5MiB   11.40%
+stepboard-caddy-1       0.19%     25.68MiB / 961.5MiB   2.67%
+stepboard-db-1          4.59%     15.17MiB / 961.5MiB   1.58%
+
+===== Disk, memory and load =====
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        24G  6.7G   17G  29% /
+               total        used        free      shared  buff/cache   available
+Mem:           961Mi       623Mi       103Mi       6.4Mi       411Mi       337Mi
+Swap:          2.0Gi       134Mi       1.9Gi
+Load average: 0.34 0.29 0.35
+Docker disk use:
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          5         4         1.002GB   103.1MB (10%)
+Containers      5         5         135.2kB   0B (0%)
+Local Volumes   3         3         49.03MB   0B (0%)
+Build Cache     59        0         1.23GB    1.136GB
+
+===== Health, from inside the backend (database included) =====
+200 {"ok":true}
+
+===== The public site, through Caddy =====
+GET https://159-89-228-242.sslip.io/api/health -> 200 in 0.115317s
+GET https://159-89-228-242.sslip.io/api/families -> 200 in 0.099157s
+GET https://159-89-228-242.sslip.io/ -> 200 in 0.086930s
+GET http://159-89-228-242.sslip.io/ -> 308, redirects to https://159-89-228-242.sslip.io/
+
+===== HTTPS certificate =====
+subject=CN = 159-89-228-242.sslip.io
+issuer=C = US, O = Let's Encrypt, CN = YE2
+notBefore=Oct 23 06:28:59 2026 GMT
+notAfter=Jan 21 06:28:58 2027 GMT
+
+===== Django's deployment checks =====
+System check identified no issues (1 silenced).
+
+===== Scheduler: when the digests run next =====
+scheduler-1  |   weekly   Mon Oct 26 2026, 08:00 AM EDT
+scheduler-1  |   monthly  Sun Nov 01 2026, 08:00 AM EST
+
+===== Logs: caddy (last 25 lines) =====
+caddy-1  | 2026-10-23T07:27:27.944634550Z {"level":"info","ts":1792740447.9445271,"logger":"http","msg":"using ACME account","account_id":"https://acme-v02.api.letsencrypt.org/acme/acct/3898960092","account_contact":[]}
+caddy-1  | 2026-10-23T07:27:28.074883577Z {"level":"info","ts":1792740448.0742931,"logger":"http.acme_client","msg":"trying to solve challenge","identifier":"159-89-228-242.sslip.io","challenge_type":"http-01","ca":"https://acme-v02.api.letsencrypt.org/directory"}
+caddy-1  | 2026-10-23T07:27:28.206737512Z {"level":"info","ts":1792740448.2065282,"logger":"http","msg":"served key authentication","identifier":"159-89-228-242.sslip.io","challenge":"http-01","remote":"<ip>:33955","distributed":false}
+caddy-1  | 2026-10-23T07:27:28.330409232Z {"level":"info","ts":1792740448.3297977,"logger":"http","msg":"served key authentication","identifier":"159-89-228-242.sslip.io","challenge":"http-01","remote":"<ip>:43964","distributed":false}
+caddy-1  | 2026-10-23T07:27:28.356874210Z {"level":"info","ts":1792740448.3563557,"logger":"http","msg":"served key authentication","identifier":"159-89-228-242.sslip.io","challenge":"http-01","remote":"<ip>:34078","distributed":false}
+caddy-1  | 2026-10-23T07:27:28.514718654Z {"level":"info","ts":1792740448.5143056,"logger":"http","msg":"served key authentication","identifier":"159-89-228-242.sslip.io","challenge":"http-01","remote":"<ip>:37788","distributed":false}
+caddy-1  | 2026-10-23T07:27:28.693875188Z {"level":"info","ts":1792740448.693527,"logger":"http","msg":"served key authentication","identifier":"159-89-228-242.sslip.io","challenge":"http-01","remote":"<ip>:55970","distributed":false}
+caddy-1  | 2026-10-23T07:27:29.326061330Z {"level":"info","ts":1792740449.325422,"logger":"http.acme_client","msg":"authorization finalized","identifier":"159-89-228-242.sslip.io","authz_status":"valid"}
+caddy-1  | 2026-10-23T07:27:29.326289448Z {"level":"info","ts":1792740449.325786,"logger":"http.acme_client","msg":"validations succeeded; finalizing order","order":"https://acme-v02.api.letsencrypt.org/acme/order/3898960092/573030141442"}
+caddy-1  | 2026-10-23T07:27:30.397149268Z {"level":"info","ts":1792740450.3965776,"logger":"http.acme_client","msg":"got renewal info","names":["159-89-228-242.sslip.io"],"window_start":1797844383,"window_end":1797999833,"selected_time":1797902435,"recheck_after":1792760632.396558,"explanation_url":""}
+caddy-1  | 2026-10-23T07:27:30.511381358Z {"level":"info","ts":1792740450.511098,"logger":"http.acme_client","msg":"got renewal info","names":["159-89-228-242.sslip.io"],"window_start":1797844383,"window_end":1797999833,"selected_time":1797858410,"recheck_after":1792760756.5110855,"explanation_url":""}
+caddy-1  | 2026-10-23T07:27:30.605887055Z {"level":"info","ts":1792740450.6056685,"logger":"http.acme_client","msg":"got renewal info","names":["159-89-228-242.sslip.io"],"window_start":1797844383,"window_end":1797999833,"selected_time":1797941131,"recheck_after":1792758487.6056557,"explanation_url":""}
+caddy-1  | 2026-10-23T07:27:30.606177904Z {"level":"info","ts":1792740450.6060019,"logger":"http.acme_client","msg":"successfully downloaded available certificate chains","count":3,"first_url":"https://acme-v02.api.letsencrypt.org/acme/cert/06cf65746f0a84f383caadc5bc69060521f8"}
+caddy-1  | 2026-10-23T07:27:30.613903284Z {"level":"info","ts":1792740450.6136842,"logger":"tls.obtain","msg":"certificate obtained successfully","identifier":"159-89-228-242.sslip.io","issuer":"acme-v02.api.letsencrypt.org-directory"}
+caddy-1  | 2026-10-23T07:27:30.615132878Z {"level":"info","ts":1792740450.6141279,"logger":"tls.obtain","msg":"releasing lock","identifier":"159-89-228-242.sslip.io"}
+caddy-1  | 2026-10-23T13:07:27.795243434Z {"level":"info","ts":1792760847.7940452,"logger":"http.acme_client","msg":"got renewal info","names":["159-89-228-242.sslip.io"],"window_start":1797844383,"window_end":1797999833,"selected_time":1797922881,"recheck_after":1792783533.7935848,"explanation_url":""}
+caddy-1  | 2026-10-23T13:07:27.797102672Z {"level":"info","ts":1792760847.796893,"logger":"tls.cache.maintenance","msg":"updated and stored ACME renewal information","identifiers":["159-89-228-242.sslip.io"],"cert_hash":"3247b37e21d6a232d8866821556a6cc6e640034875253671f9102461d56faa62","ari_unique_id":"uVnyjs8i8IbTN0j_dhQYuoLYVYc.Bs9ldG8KhPODyq3FvGkGBSH4","cert_expiry":1800512938,"selected_time":1797902435,"next_update":1792783533.7935848,"explanation_url":""}
+caddy-1  | 2026-10-23T19:27:27.789287262Z {"level":"info","ts":1792783647.788423,"logger":"http.acme_client","msg":"got renewal info","names":["159-89-228-242.sslip.io"],"window_start":1797844383,"window_end":1797999833,"selected_time":1797941612,"recheck_after":1792804993.788408,"explanation_url":""}
+caddy-1  | 2026-10-23T19:27:27.791036169Z {"level":"info","ts":1792783647.7908633,"logger":"tls.cache.maintenance","msg":"updated and stored ACME renewal information","identifiers":["159-89-228-242.sslip.io"],"cert_hash":"3247b37e21d6a232d8866821556a6cc6e640034875253671f9102461d56faa62","ari_unique_id":"uVnyjs8i8IbTN0j_dhQYuoLYVYc.Bs9ldG8KhPODyq3FvGkGBSH4","cert_expiry":1800512938,"selected_time":1797902435,"next_update":1792804993.788408,"explanation_url":""}
+caddy-1  | 2026-10-24T01:27:27.937441894Z {"level":"info","ts":1792805247.9371996,"logger":"http.acme_client","msg":"got renewal info","names":["159-89-228-242.sslip.io"],"window_start":1797844383,"window_end":1797999833,"selected_time":1797929600,"recheck_after":1792830815.9371862,"explanation_url":""}
+caddy-1  | 2026-10-24T01:27:27.947918710Z {"level":"info","ts":1792805247.9470332,"logger":"tls.cache.maintenance","msg":"updated and stored ACME renewal information","identifiers":["159-89-228-242.sslip.io"],"cert_hash":"3247b37e21d6a232d8866821556a6cc6e640034875253671f9102461d56faa62","ari_unique_id":"uVnyjs8i8IbTN0j_dhQYuoLYVYc.Bs9ldG8KhPODyq3FvGkGBSH4","cert_expiry":1800512938,"selected_time":1797902435,"next_update":1792830815.9371862,"explanation_url":""}
+caddy-1  | 2026-10-24T07:27:27.642870299Z {"level":"info","ts":1792826847.6412692,"logger":"tls","msg":"cleaning storage unit","storage":"FileStorage:/data/caddy"}
+caddy-1  | 2026-10-24T07:27:27.646615371Z {"level":"info","ts":1792826847.646234,"logger":"tls","msg":"finished cleaning storage units"}
+caddy-1  | 2026-10-24T08:37:28.094976765Z {"level":"info","ts":1792831048.090868,"logger":"http.acme_client","msg":"got renewal info","names":["159-89-228-242.sslip.io"],"window_start":1797844383,"window_end":1797999833,"selected_time":1797961793,"recheck_after":1792856801.0908554,"explanation_url":""}
+caddy-1  | 2026-10-24T08:37:28.112268856Z {"level":"info","ts":1792831048.095152,"logger":"tls.cache.maintenance","msg":"updated and stored ACME renewal information","identifiers":["159-89-228-242.sslip.io"],"cert_hash":"3247b37e21d6a232d8866821556a6cc6e640034875253671f9102461d56faa62","ari_unique_id":"uVnyjs8i8IbTN0j_dhQYuoLYVYc.Bs9ldG8KhPODyq3FvGkGBSH4","cert_expiry":1800512938,"selected_time":1797902435,"next_update":1792856801.0908554,"explanation_url":""}
+
+===== Logs: backend (last 25 lines) =====
+backend-1  | 2026-10-24T09:13:10.635306366Z 127.0.0.1 - - [24/Oct/2026:05:13:10 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:14.123686307Z 127.0.0.1 - - [24/Oct/2026:05:13:14 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:17.717681231Z 127.0.0.1 - - [24/Oct/2026:05:13:17 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:21.239388561Z 127.0.0.1 - - [24/Oct/2026:05:13:21 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:24.750711004Z 127.0.0.1 - - [24/Oct/2026:05:13:24 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:28.301706362Z 127.0.0.1 - - [24/Oct/2026:05:13:28 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:31.928380744Z 127.0.0.1 - - [24/Oct/2026:05:13:31 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:35.500665171Z 127.0.0.1 - - [24/Oct/2026:05:13:35 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:39.004592315Z 127.0.0.1 - - [24/Oct/2026:05:13:39 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:42.602402419Z 127.0.0.1 - - [24/Oct/2026:05:13:42 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:46.117837625Z 127.0.0.1 - - [24/Oct/2026:05:13:46 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:49.632671742Z 127.0.0.1 - - [24/Oct/2026:05:13:49 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:53.260538401Z 127.0.0.1 - - [24/Oct/2026:05:13:53 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:13:56.786624587Z 127.0.0.1 - - [24/Oct/2026:05:13:56 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:00.438335500Z 127.0.0.1 - - [24/Oct/2026:05:14:00 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:04.058895584Z 127.0.0.1 - - [24/Oct/2026:05:14:04 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:07.688510385Z 127.0.0.1 - - [24/Oct/2026:05:14:07 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:11.208708497Z 127.0.0.1 - - [24/Oct/2026:05:14:11 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:14.711708992Z 127.0.0.1 - - [24/Oct/2026:05:14:14 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:18.308686268Z 127.0.0.1 - - [24/Oct/2026:05:14:18 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:22.427834305Z 127.0.0.1 - - [24/Oct/2026:05:14:22 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:25.635702802Z 127.0.0.1 - - [24/Oct/2026:05:14:25 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+backend-1  | 2026-10-24T09:14:25.839468705Z 172.18.0.5 - - [24/Oct/2026:05:14:25 -0400] "GET /health HTTP/1.1" 200 11 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:14:25.965296776Z 172.18.0.5 - - [24/Oct/2026:05:14:25 -0400] "GET /families HTTP/1.1" 200 57 "-" "curl/8.5.0"
+backend-1  | 2026-10-24T09:14:26.701154230Z 127.0.0.1 - - [24/Oct/2026:05:14:26 -0400] "GET /health HTTP/1.1" 200 11 "-" "Python-urllib/3.12"
+
+===== Logs: scheduler (last 25 lines) =====
+scheduler-1  | 2026-10-24T08:38:07.228457040Z 2026-10-24 04:38:07,226 INFO apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+scheduler-1  | 2026-10-24T08:38:07.229115524Z 2026-10-24 04:38:07,228 INFO apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+scheduler-1  | 2026-10-24T08:38:07.229273652Z Digest scheduler started (Ctrl+C to stop). Next runs:
+scheduler-1  | 2026-10-24T08:38:07.231437343Z 2026-10-24 04:38:07,230 INFO apscheduler.scheduler: Added job "Weekly digests" to job store "default"
+scheduler-1  | 2026-10-24T08:38:07.231470385Z 2026-10-24 04:38:07,231 INFO apscheduler.scheduler: Added job "Monthly digests" to job store "default"
+scheduler-1  | 2026-10-24T08:38:07.231473686Z 2026-10-24 04:38:07,231 INFO apscheduler.scheduler: Scheduler started
+scheduler-1  | 2026-10-24T08:38:07.231487341Z   weekly   Mon Oct 26 2026, 08:00 AM EDT
+scheduler-1  | 2026-10-24T08:38:07.231491040Z   monthly  Sun Nov 01 2026, 08:00 AM EST
+
+===== Logs: frontend (last 25 lines) =====
+frontend-1  | 2026-10-24T08:38:04.153504370Z 2026/10/24 08:38:04 [notice] 1#1: using the "epoll" event method
+frontend-1  | 2026-10-24T08:38:04.153824450Z 2026/10/24 08:38:04 [notice] 1#1: nginx/1.30.6
+frontend-1  | 2026-10-24T08:38:04.153967951Z 2026/10/24 08:38:04 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0)
+frontend-1  | 2026-10-24T08:38:04.153975272Z 2026/10/24 08:38:04 [notice] 1#1: OS: Linux 6.8.0-147-generic
+frontend-1  | 2026-10-24T08:38:04.153978897Z 2026/10/24 08:38:04 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+frontend-1  | 2026-10-24T08:38:04.154721678Z 2026/10/24 08:38:04 [notice] 1#1: start worker processes
+frontend-1  | 2026-10-24T08:38:04.155685081Z 2026/10/24 08:38:04 [notice] 1#1: start worker process 29
+frontend-1  | 2026-10-24T08:38:07.592698896Z 172.18.0.6 - - [24/Oct/2026:08:38:07 +0000] "GET /api/health HTTP/1.1" 200 11 "-" "curl/8.5.0" "<ip>"
+frontend-1  | 2026-10-24T08:38:07.899983802Z 172.18.0.6 - - [24/Oct/2026:08:38:07 +0000] "GET /api/families HTTP/1.1" 200 57 "-" "curl/8.5.0" "<ip>"
+frontend-1  | 2026-10-24T08:38:08.181845360Z 172.18.0.6 - - [24/Oct/2026:08:38:08 +0000] "GET / HTTP/1.1" 200 408 "-" "curl/8.5.0" "<ip>"
+frontend-1  | 2026-10-24T08:45:48.790281018Z 172.18.0.6 - - [24/Oct/2026:08:45:48 +0000] "GET /api/health HTTP/1.1" 200 11 "-" "curl/8.4.0" "<ip>"
+frontend-1  | 2026-10-24T08:45:49.416449919Z 172.18.0.6 - - [24/Oct/2026:08:45:49 +0000] "GET /api/families/1 HTTP/1.1" 200 55 "-" "curl/8.4.0" "<ip>"
+frontend-1  | 2026-10-24T08:45:49.966740942Z 172.18.0.6 - - [24/Oct/2026:08:45:49 +0000] "POST /api/families/join HTTP/1.1" 422 85 "-" "curl/8.4.0" "<ip>"
+frontend-1  | 2026-10-24T08:45:50.204671910Z 172.18.0.6 - - [24/Oct/2026:08:45:50 +0000] "HEAD / HTTP/1.1" 200 0 "-" "curl/8.4.0" "<ip>"
+frontend-1  | 2026-10-24T08:49:36.298987329Z 172.18.0.6 - - [24/Oct/2026:08:49:36 +0000] "GET /favicon.ico HTTP/1.1" 200 408 "https://159-89-228-242.sslip.io/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 OPR/137.0.0.0" "<ip>"
+frontend-1  | 2026-10-24T08:57:44.686499527Z 172.18.0.6 - - [24/Oct/2026:08:57:44 +0000] "GET /api/health HTTP/1.1" 200 11 "-" "curl/8.5.0" "159.89.228.242"
+frontend-1  | 2026-10-24T08:57:44.869660054Z 172.18.0.6 - - [24/Oct/2026:08:57:44 +0000] "GET /api/families HTTP/1.1" 200 57 "-" "curl/8.5.0" "159.89.228.242"
+frontend-1  | 2026-10-24T08:57:45.056423995Z 172.18.0.6 - - [24/Oct/2026:08:57:45 +0000] "GET / HTTP/1.1" 200 408 "-" "curl/8.5.0" "159.89.228.242"
+frontend-1  | 2026-10-24T09:02:55.565152177Z 172.18.0.6 - - [24/Oct/2026:09:02:55 +0000] "GET / HTTP/1.1" 200 408 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36" "<ip>"
+frontend-1  | 2026-10-24T09:11:15.027610325Z 172.18.0.6 - - [24/Oct/2026:09:11:15 +0000] "GET /api/health HTTP/1.1" 200 11 "-" "curl/8.5.0" "159.89.228.242"
+frontend-1  | 2026-10-24T09:11:15.149808443Z 172.18.0.6 - - [24/Oct/2026:09:11:15 +0000] "GET /api/families HTTP/1.1" 200 57 "-" "curl/8.5.0" "159.89.228.242"
+frontend-1  | 2026-10-24T09:11:15.252124131Z 172.18.0.6 - - [24/Oct/2026:09:11:15 +0000] "GET / HTTP/1.1" 200 408 "-" "curl/8.5.0" "159.89.228.242"
+frontend-1  | 2026-10-24T09:14:25.841874653Z 172.18.0.6 - - [24/Oct/2026:09:14:25 +0000] "GET /api/health HTTP/1.1" 200 11 "-" "curl/8.5.0" "159.89.228.242"
+frontend-1  | 2026-10-24T09:14:25.963193094Z 172.18.0.6 - - [24/Oct/2026:09:14:25 +0000] "GET /api/families HTTP/1.1" 200 57 "-" "curl/8.5.0" "159.89.228.242"
+frontend-1  | 2026-10-24T09:14:26.076150559Z 172.18.0.6 - - [24/Oct/2026:09:14:26 +0000] "GET / HTTP/1.1" 200 408 "-" "curl/8.5.0" "159.89.228.242"
+
+===== Logs: db (last 25 lines) =====
+db-1  | 2026-10-23T07:11:13.930442439Z
+db-1  | 2026-10-23T07:11:13.930499979Z /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+db-1  | 2026-10-23T07:11:13.930505117Z
+db-1  | 2026-10-23T07:11:13.935037779Z waiting for server to shut down....2026-10-23 07:11:13.934 UTC [45] LOG:  received fast shutdown request
+db-1  | 2026-10-23T07:11:13.941597695Z 2026-10-23 07:11:13.941 UTC [45] LOG:  aborting any active transactions
+db-1  | 2026-10-23T07:11:13.957306042Z 2026-10-23 07:11:13.957 UTC [45] LOG:  background worker "logical replication launcher" (PID 51) exited with exit code 1
+db-1  | 2026-10-23T07:11:13.957873052Z 2026-10-23 07:11:13.957 UTC [46] LOG:  shutting down
+db-1  | 2026-10-23T07:11:13.959521426Z 2026-10-23 07:11:13.959 UTC [46] LOG:  checkpoint starting: shutdown immediate
+db-1  | 2026-10-23T07:11:14.005671395Z 2026-10-23 07:11:14.005 UTC [46] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.029 s, sync=0.014 s, total=0.048 s; sync files=301, longest=0.001 s, average=0.001 s; distance=4283 kB, estimate=4283 kB; lsn=0/1925D68, redo lsn=0/1925D68
+db-1  | 2026-10-23T07:11:14.016194882Z 2026-10-23 07:11:14.016 UTC [45] LOG:  database system is shut down
+db-1  | 2026-10-23T07:11:14.036919902Z  done
+db-1  | 2026-10-23T07:11:14.037071063Z server stopped
+db-1  | 2026-10-23T07:11:14.039091300Z
+db-1  | 2026-10-23T07:11:14.039134934Z PostgreSQL init process complete; ready for start up.
+db-1  | 2026-10-23T07:11:14.039138561Z
+db-1  | 2026-10-23T07:11:14.076722165Z 2026-10-23 07:11:14.076 UTC [1] LOG:  starting PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+db-1  | 2026-10-23T07:11:14.077108563Z 2026-10-23 07:11:14.077 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+db-1  | 2026-10-23T07:11:14.077295512Z 2026-10-23 07:11:14.077 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+db-1  | 2026-10-23T07:11:14.079568815Z 2026-10-23 07:11:14.079 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+db-1  | 2026-10-23T07:11:14.087457679Z 2026-10-23 07:11:14.086 UTC [61] LOG:  database system was shut down at 2026-10-23 07:11:14 UTC
+db-1  | 2026-10-23T07:11:14.097465340Z 2026-10-23 07:11:14.097 UTC [1] LOG:  database system is ready to accept connections
+db-1  | 2026-10-23T07:16:14.172392552Z 2026-10-23 07:16:14.171 UTC [59] LOG:  checkpoint starting: time
+db-1  | 2026-10-23T07:16:33.314675980Z 2026-10-23 07:16:33.314 UTC [59] LOG:  checkpoint complete: wrote 193 buffers (1.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=19.128 s, sync=0.009 s, total=19.143 s; sync files=135, longest=0.002 s, average=0.001 s; distance=860 kB, estimate=860 kB; lsn=0/19FCDD0, redo lsn=0/19FCD98
+db-1  | 2026-10-23T07:21:14.399856157Z 2026-10-23 07:21:14.399 UTC [59] LOG:  checkpoint starting: time
+db-1  | 2026-10-23T07:21:15.316282566Z 2026-10-23 07:21:15.316 UTC [59] LOG:  checkpoint complete: wrote 10 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.910 s, sync=0.002 s, total=0.917 s; sync files=7, longest=0.001 s, average=0.001 s; distance=1 kB, estimate=774 kB; lsn=0/19FD280, redo lsn=0/19FD248

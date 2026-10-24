@@ -68,6 +68,9 @@ jobs:
       - name: Agent hook tests (agent-hooks/, run as Claude Code runs them)
         if: matrix.database == 'sqlite'
         run: python -m pytest ../agent-hooks/tests -p no:django
+      - name: Ops redaction tests (ops/redact.py, which cleans server output before it's shared)
+        if: matrix.database == 'sqlite'
+        run: python -m pytest ../ops/tests -p no:django
       - name: Production settings pass Django's deployment checks
         if: matrix.database == 'postgres'
         env:
