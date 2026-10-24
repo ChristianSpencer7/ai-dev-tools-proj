@@ -1,6 +1,6 @@
 # Ops
 
-Diagnosing the running app with Docker Compose: a health report, planned-failure drills, and what each showed. The server's setup and everyday commands are in [docs/deployment.md](../docs/deployment.md).
+Diagnosing the running app with Docker Compose: a health report, planned-failure drills, and what each showed. **When something's wrong, start with the [runbook](runbook.md).** The server's setup and everyday commands are in [docs/deployment.md](../docs/deployment.md).
 
 | File | What it is |
 | --- | --- |

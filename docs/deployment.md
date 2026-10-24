@@ -139,7 +139,8 @@ Run these on the server, in `/srv/stepboard`.
 | Deploy the latest `main` by hand | `./scripts/deploy.sh` |
 | What's running | `dc ps` |
 | Logs (follow) | `dc logs -f backend` (or `scheduler`, `caddy`, `frontend`, `db`) |
-| When the digests run next | `dc logs scheduler \| grep -A2 "Next runs"` |
+| When the digests run next | `dc logs scheduler \| grep -E '(weekly\|monthly) +[A-Z]'` |
+| Health report, safe to share | `ops/collect.sh`; when something's wrong, see the [runbook](../ops/runbook.md) |
 | Restart one service | `dc restart backend` |
 | Admin account | `dc exec backend python manage.py createsuperuser` |
 | Refresh the demo data | `dc exec backend python manage.py seed_demo --reset` (also removes anyone who joined it) |
