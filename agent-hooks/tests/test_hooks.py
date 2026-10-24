@@ -48,6 +48,7 @@ def test_everything_else_is_allowed(path):
     assert guard(path) == (0, "")
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="backslashes are only path separators on Windows")
 def test_windows_style_paths_are_checked_too():
     windows_path = str(REPO / ".env").replace("/", "\\")
     assert run_hook("guard_files.py", {"file_path": windows_path})[0] == 2
@@ -64,6 +65,63 @@ def test_writes_are_guarded_like_edits():
 def test_bad_input_is_a_notice_not_a_block():
     code, message = run_hook("guard_files.py", {}, raw="not json")
     assert code == 1 and "wasn't JSON" in message
+
+
+def shell(command, tool="Bash"):
+    return run_hook("guard_files.py", {"command": command}, tool_name=tool)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cat .env",                                                       # reading secrets into the conversation
+        "echo DISCORD_WEBHOOK_URL=https://example.com/hook >> .env",
+        "cp .env.example .env",
+        "grep SECRET backend/.env",
+        "sed -i 's/max_length=80/max_length=90/' backend/leaderboard/migrations/0001_initial.py",
+        "cd backend && sed -i.bak 's/a/b/' leaderboard/migrations/0002_alter_stepentry_steps_at_most_100000.py",
+        "rm backend/leaderboard/migrations/0003_message_as_of.py",
+        "python -c \"open('leaderboard/migrations/0001_initial.py', 'w').write('')\"",
+        "rm backend/db.sqlite3",
+        "echo x > db.sqlite3",
+    ],
+)
+def test_shell_commands_that_touch_protected_files_are_blocked(command):
+    code, reason = shell(command)
+    assert code == 2 and reason.startswith("Blocked by agent-hooks/guard_files.py: ")
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cat .env.example",
+        "cat backend/leaderboard/migrations/0001_initial.py",              # reading a migration is fine
+        "grep -n AlterField backend/leaderboard/migrations/0002_alter_stepentry_steps_at_most_100000.py 2>&1",
+        "python manage.py makemigrations leaderboard",                    # the right way to change the schema
+        "sed -i 's/a/b/' backend/leaderboard/migrations/0099_brand_new.py",  # a new, uncommitted migration
+        "sqlite3 db.sqlite3 'select count(*) from leaderboard_family'",
+        "ls backend > /dev/null",
+        "git status --short 2>&1",
+        "echo environment",                                               # contains "env" but not .env
+        "python -m pytest -q",
+    ],
+)
+def test_ordinary_shell_commands_are_allowed(command):
+    assert shell(command) == (0, "")
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["Set-Content -Path .env -Value 'X=1'", r"Get-Content backend\.env",
+     r"Remove-Item backend\leaderboard\migrations\0001_initial.py"],
+)
+def test_powershell_commands_are_checked_too(command):
+    assert shell(command, tool="PowerShell")[0] == 2
+
+
+def test_the_shell_reason_names_the_fix():
+    _, reason = shell("sed -i 's/x/y/' backend/leaderboard/migrations/0001_initial.py")
+    assert "already committed" in reason and "makemigrations" in reason
 
 
 # --- contract_check.py (PostToolUse) -------------------------------------------------------------
