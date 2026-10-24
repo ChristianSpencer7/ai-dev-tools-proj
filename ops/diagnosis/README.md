@@ -65,3 +65,23 @@ Two Demo Family digests were sent from one-off containers with a broken webhook.
 - **"A failed post must never lose a digest" holds** on the real deployment, for both kinds of failure.
 - **"The webhook URL must never be logged" holds.** A marker in both fake URLs appeared in 0 lines of the drill's output and of every service's logs, counted before redaction, so `redact.py` couldn't have hidden a leak.
 - **Production has no webhook set.** The running backend reports "not set", so real digests go only to the in-app Messages page. That's allowed by design ("Discord stays optional"), but it's worth knowing: nobody is told a digest is ready.
+
+## The database drill again, after the fixes
+
+Run on production after pull request #7 deployed the fixes, at 18:46 UTC ([2026-10-24-production-drill-database-after-fixes.txt](2026-10-24-production-drill-database-after-fixes.txt)).
+
+| | Before the fixes (09:14) | After (18:46) |
+| --- | --- | --- |
+| What the logs say | `500` lines only | **The cause:** 48 `OperationalError: failed to resolve host 'db'`, 27 `ERROR django.request` for `/health` and 23 for `/families`, and 2 `terminating connection due to administrator command`, from the connections open when Postgres stopped |
+| Marked unhealthy | ~75 s after the stop | ~83 s (checks every 30 s) |
+| Site answering again | 5 s after the database started | 1 s |
+| Marked healthy again | right away (checks every 3 s) | **later than the site:** still `(unhealthy)` at the end, because Docker only checks every 30 s |
+
+Finding 5 is fixed on production: the next outage will say what's wrong in the logs.
+
+**The run also exposed problems in the drill script itself**, fixed since and rehearsed on the local stack:
+
+- "backend healthy again after: 5s" was wrong. The check matched the *database's* `(healthy)` on the same line; the backend was still `(unhealthy)`. It now checks the backend's status, and says the backend lags the site by up to 30 s.
+- "health checks: 27" counted the drill's own `/api/health` probes along with Docker's checks. They're now counted apart: in the rehearsal, 4 of Docker's against 8 of the drill's.
+- The log section after the restart showed the middle of a traceback; it now groups the errors like the section before it.
+- **A dropped SSH session could leave the database stopped.** The drill ran in a subshell piped into `redact.py`, with its traps there, so a hangup reaching the main shell first ended it without restarting the database. The local test showed exactly that: the database stayed down until the orphaned subshell finished by itself. The drill now runs in the main shell, which sends its own output to `redact.py`; in the same test, the database came back within about 3 seconds of the hangup.

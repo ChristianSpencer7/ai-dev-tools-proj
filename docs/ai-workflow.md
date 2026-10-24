@@ -212,6 +212,7 @@ Every backlog task followed the same loop:
 | **The rehearsal and production disagreed.** Locally each failing request took 7.5 s; on the server, 0.1 s | Comparing the two runs | Not a fault of the app: Docker Desktop's name lookup for a stopped container. The rehearsal tested the scripts; only production showed the app's behavior |
 
 - **Predicted wrongly:** that each worker would fail one more request on a dead connection after the database came back (`conn_max_age=600`). It didn't; Django drops a connection after an error.
+- **Confirmed after merging** (pull request #7): the developer ran the database drill on production again. The logs named the cause this time, with 48 `OperationalError: failed to resolve host 'db'` lines and an `ERROR django.request` for every failed request, where before there were only "500"s. That run also exposed four problems in the drill script itself, fixed on `ops-drill-followup` and listed below.
 
 ### Mistakes the AI made, and how they were caught
 
@@ -241,6 +242,8 @@ Verification found these before they caused harm. They're recorded because catch
 - The webhook drill's first version had two scripting errors: a settings check outside Django, and quotes Python couldn't read. Caught by the rehearsal.
 - The runbook's error summary kept each line's timestamp, so `uniq -c` counted every line separately. Caught by running it on real logs; the runbook shows the fixed command's real output. The digest-times command in `docs/deployment.md` had a similar bug, found the same way and fixed.
 - The guard blocked the AI's own commands three times, for mentioning `.env` in a commit message, a script comment and README text. Not a fault; worked around with message files and the edit tool, as in task 14.
+- **The drill reported a recovery that hadn't happened.** "Backend healthy again after: 5s" came from a text match on `(healthy)` that also matched the database's status on the same line; the run's own last table showed the backend still `(unhealthy)`. The local rehearsals hadn't caught it, because with checks every 3 seconds the backend really was healthy by then. Caught by reading the production output against itself. It also counted the drill's own probes as Docker's health checks.
+- **A dropped SSH session could have left the production database stopped.** The drill's safety traps were in a subshell, so a hangup reaching the main shell first ended the script without restarting the database. The AI had claimed the database "is started again however the script ends", without testing a hangup. Caught when the developer pasted a partial output mid-drill and the AI checked what would happen if the session dropped. In a local test the database did stay down; after the fix, it came back within about 3 seconds.
 
 ## Decisions made by the developer
 

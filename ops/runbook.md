@@ -60,6 +60,8 @@ The `sed` drops each line's container name and timestamp, so the same error is c
 
 **What it doesn't do:** restart anything, or tell anyone. In the drill, the backend sat `(unhealthy)` until the database came back, then turned healthy again by itself. A restart wouldn't have helped: the problem was the database.
 
+**It lags behind.** It's checked every 30 seconds, so it can say `(unhealthy)` for up to 30 seconds after the site works again. In the second production drill the site answered 1 second after the database started, while `dc ps` still said `(unhealthy)`. The site's own answer (`curl` on `/api/health`) is the up-to-date one.
+
 1. `dc ps db`: if the database isn't running and healthy, fix that first ([above](#the-api-returns-500)).
 2. Find what `/health` is failing on: `dc exec backend python -c "import urllib.request as u; print(u.urlopen('http://localhost:8000/health', timeout=5).read())"`, and the error summary above.
 3. If the database is fine and the backend is still failing: `dc restart backend`, then `dc ps` until it's `(healthy)`, usually within 15 seconds.
@@ -123,7 +125,7 @@ Practise these before you need them, and repeat them after changes to the Compos
 
 | Drill | What it shows | Cost |
 | --- | --- | --- |
-| [drill-database.sh](drill-database.sh) | What a database outage looks like from outside and in the logs, and how long recovery takes | About 3 minutes of errors on the live site |
+| [drill-database.sh](drill-database.sh) | What a database outage looks like from outside and in the logs, and how long recovery takes | About 3 minutes of errors on the live site. The database is started again however the drill ends, including Ctrl+C or a dropped SSH session; if in doubt, `dc ps db` |
 | [drill-webhook.sh](drill-webhook.sh) | That a failed Discord post keeps the digest and never logs the URL | None: two failed digests on the Demo Family's Messages page |
 
 ## Known gaps
