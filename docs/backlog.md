@@ -23,7 +23,7 @@ A small backlog for building the [plan](plan.md) with a Django backend instead o
 | 11 | CI and deployment | 5 | M | ✅ Done |
 | 12 | MCP server on the Django API | 6 | M | ✅ Done |
 | 13 | Integration tests | 3, 5 | M | ✅ Done |
-| 14 | Rest of the agent extension pack | 6 | M | To do |
+| 14 | Rest of the agent extension pack | 6 | M | ✅ Done |
 | 15 | Security scans and PR audit | 7 | M | To do |
 | 16 | Ops diagnosis and AI tool/data policy | 7 | S | To do |
 | 17 | AI workflow log | 1–8 | S | 🔄 Started: [log](ai-workflow.md), updated with each task |
