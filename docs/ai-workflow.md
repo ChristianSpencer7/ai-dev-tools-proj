@@ -184,6 +184,35 @@ Every backlog task followed the same loop:
 | `.claude/settings.local.json`, a person's own Claude Code permissions, wasn't gitignored | Writing the secrets section of the notes | Gitignored |
 | The guard blocked the AI deleting a throwaway `.sqlite3` file in its scratch folder | The guard | Not a fault. A differently named file was used, rather than working around the rule |
 
+### 2026-10-24: Task 16, ops diagnosis and the AI tool and data policy
+
+- **Prompt:** *"let's start task 16"*. The developer chose Docker Compose as the course's DevOps tool, and to run the planned failures **on production**. The AI recommended production for the database drill (the backlog says "the running deployment"; the live site holds only demo data). For the webhook drill it found a way that never touches the server's `.env`: one-off containers given a broken webhook on the command line.
+- **Delegated:**
+  - a read-only health report script
+  - two drill scripts
+  - a redaction module with tests in CI, so server output can be shared with an AI tool
+  - the findings and the fixes
+  - [ops/runbook.md](../ops/runbook.md)
+  - [security/ai-policy.md](../security/ai-policy.md), linked from the README and `AGENTS.md`
+- **Done by the developer:** ran every script on the server, as `deploy`, from a temporary worktree so the deployed copy never changed, and pasted the redacted output back. No AI tool had access to the server.
+- **Verified:**
+  - Each drill was rehearsed on the local stack before it ran on production.
+  - Each fix was checked on the local stack: 12-second startup, 3 health checks a minute instead of about 17, log limits on every container, and the cause of a `500` in the logs.
+  - The saved outputs were run back through the redaction to confirm there was nothing left to remove.
+  - The runbook's commands were tried before they were kept.
+- **What the diagnosis found** ([ops/diagnosis/](../ops/diagnosis/README.md)):
+
+| Finding | How it was found | Fix |
+| --- | --- | --- |
+| A `500` left **no cause** in the logs: with `DEBUG` off, Django sends request errors only to (unset) admin email | Predicted from the settings, confirmed by the production drill: 16 `500`s and 37 failed health checks, not one line saying why | Request errors go to the console, with tests that failed first. The local drill now logs `OperationalError: failed to resolve host 'db'` |
+| Health checks every 3 s were most of the backend's log | The first health report: 22 of the last 25 lines | Every 3 s while starting, then every 30 s (`start_interval`); startup is still 12 s |
+| Container logs had no size limit; the build cache had grown to 1.1 GB | The health report's `docker system df` | 3 × 10 MB per service; `deploy.sh` clears build cache older than a week |
+| Being marked unhealthy changes nothing, and nothing alerts anyone | The drill: unhealthy after ~75 s, then no reaction | A known gap in the runbook: an external uptime monitor needs the owner's account |
+| Production has no Discord webhook set | The webhook drill's before/after check | Not a fault (Discord is optional); recorded in the runbook |
+| **The rehearsal and production disagreed.** Locally each failing request took 7.5 s; on the server, 0.1 s | Comparing the two runs | Not a fault of the app: Docker Desktop's name lookup for a stopped container. The rehearsal tested the scripts; only production showed the app's behavior |
+
+- **Predicted wrongly:** that each worker would fail one more request on a dead connection after the database came back (`conn_max_age=600`). It didn't; Django drops a connection after an error.
+
 ### Mistakes the AI made, and how they were caught
 
 Verification found these before they caused harm. They're recorded because catching them is the point of the loop.
@@ -204,6 +233,14 @@ Verification found these before they caused harm. They're recorded because catch
 - One test edit left an unused copy of a test function behind. Caught on reading the file back; removed.
 - The first pip-audit output files for clean results were empty, because the tool prints "No known vulnerabilities" to stderr. Caught by listing file sizes; rerun with both streams saved.
 - A command in the scans README was saved with a broken line, by the same escaping problem. Caught by running the command from the README; fixed and checked to give the same package list.
+- After merging pull request #6, the AI's loop waiting for the deploy cut the run's title to 50 characters and so never matched "security-scans". Caught when it ran past its timeout; checked directly instead, and the loop stopped.
+- **The first production health report wasn't fully redacted** (task 16): IPv4 addresses followed by a port, as in Caddy's `"remote":"1.2.3.4:33955"`, weren't replaced. The five addresses were Let's Encrypt's validation servers, not visitors, and visitors' addresses were replaced. The same run also replaced browser versions like `Chrome/130.0.0.0`. Caught by reading the report before using it. The redaction was moved into `ops/redact.py`, with tests built from the real output, before the drill ran.
+- The scripts were run on the server before they'd been pushed, so the server fetched the old version. The AI's instructions put "commit and push" after the commands to run. Caught from the output (no drill script, the old redaction). Since then, a run is only suggested after a push.
+- The database drill counted rounds instead of watching the clock, so "75 seconds" lasted 5½ minutes when each check slowed down. Caught by the local rehearsal; fixed before production.
+- After the logging fix, the drill's log section showed the middle of a traceback. Caught in the next rehearsal; it now shows the errors grouped by kind.
+- The webhook drill's first version had two scripting errors: a settings check outside Django, and quotes Python couldn't read. Caught by the rehearsal.
+- The runbook's error summary kept each line's timestamp, so `uniq -c` counted every line separately. Caught by running it on real logs; the runbook shows the fixed command's real output. The digest-times command in `docs/deployment.md` had a similar bug, found the same way and fixed.
+- The guard blocked the AI's own commands three times, for mentioning `.env` in a commit message, a script comment and README text. Not a fault; worked around with message files and the edit tool, as in task 14.
 
 ## Decisions made by the developer
 
@@ -225,6 +262,9 @@ Verification found these before they caused harm. They're recorded because catch
 | What fails CI | Every finding, or high and critical only | High and critical; any secret |
 | No logins on the API | Accept for now; the invite code as a password; real accounts | Accept for now, with the live site demo-only |
 | Control characters in names | MCP server only, or the backend too | The backend too |
+| DevOps tool for the diagnosis | Docker Compose, or others the course used | Docker Compose |
+| Where to run the planned failures | Production, or a local copy of the stack | Production (the webhook drill without touching the server's settings) |
+| Which diagnosis findings to fix now | Six, from log noise to JSON errors | Health checks, log limits, build cache, error logging; the rest recorded as known gaps |
 
 ## Adding an entry
 

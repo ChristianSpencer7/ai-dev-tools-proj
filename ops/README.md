@@ -10,6 +10,24 @@ Diagnosing the running app with Docker Compose: a health report, planned-failure
 | [redact.py](redact.py) | Cleans server output before it's shared: visitors' IP addresses, webhook URLs, secret values. Both scripts pipe everything through it. Tested in [tests/](tests/) and in CI |
 | [diagnosis/](diagnosis/) | The real output, from the production server |
 
+## What the diagnosis found
+
+From one health report and two drills on the production server, 2026-10-24 ([diagnosis/](diagnosis/README.md)):
+
+- **Fixed:**
+  - health checks every 3 seconds made most of the backend's log
+  - container logs had no size limit
+  - the build cache grew with every deploy
+  - a `500` left no cause in the logs
+- **Confirmed on the live site:**
+  - with the database down, the page still loads but the API fails, and it recovers 5 seconds after the database is back
+  - a failed Discord post keeps the digest and never logs the webhook URL
+- **Known gaps, in the [runbook](runbook.md#known-gaps):**
+  - nothing alerts on an outage
+  - API errors are HTML
+  - backups are by hand
+  - production has no webhook set
+
 ## Running them
 
 On the server, as `deploy`. Once they're on `main`, they're in the deployed copy:
