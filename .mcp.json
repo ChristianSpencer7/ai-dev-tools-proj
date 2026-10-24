@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "stepboard": {
+      "command": "${STEPBOARD_MCP_PYTHON:-mcp-server/.venv/Scripts/python.exe}",
+      "args": ["-m", "stepboard_mcp"],
+      "env": {
+        "STEPBOARD_API_URL": "${STEPBOARD_API_URL:-http://localhost:8000}",
+        "STEPBOARD_FAMILY": "${STEPBOARD_FAMILY:-Demo Family}"
+      }
+    }
+  }
+}
