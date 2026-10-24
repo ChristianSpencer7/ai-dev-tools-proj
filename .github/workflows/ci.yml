@@ -94,6 +94,29 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  mcp:
+    name: MCP server
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mcp-server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            mcp-server/pyproject.toml
+            backend/pyproject.toml
+      - name: Install (the MCP server, plus the backend for the end-to-end tests)
+        run: pip install -e ../backend -e ".[dev]"
+      - name: Tests (the tools against a fake app, then against the real backend)
+        env:
+          STEPBOARD_REQUIRE_BACKEND: "1"  # fail, rather than skip, if the backend tests can't run
+        run: pytest -rs
+
   docker:
     name: Docker images
     runs-on: ubuntu-latest
@@ -109,7 +132,7 @@ jobs:
     name: Deploy to production
     # Only for pushes to main (a merged pull request), and only once every check above has passed.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, frontend, docker]
+    needs: [backend, frontend, mcp, docker]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
