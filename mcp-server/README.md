@@ -26,7 +26,7 @@ Two environment variables, both optional:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `STEPBOARD_API_URL` | `http://localhost:8000` | The app's API. For the live site, `https://159-89-228-242.sslip.io/api` |
+| `STEPBOARD_API_URL` | `http://localhost:8000` | The app's API. For the live site, `https://159-89-228-242.sslip.io/api`. Must be `https://`, or `http://` to this machine; anything else stops the server at startup |
 | `STEPBOARD_FAMILY` | `Demo Family` | The one family the tools read and write |
 
 **It points at your local backend by default on purpose.** `log_steps` changes data, and the app has no logins, so a server pointed at the live site can change real boards. Use the live site deliberately, for reading or for a real family's own steps.
@@ -72,7 +72,7 @@ The second file needs the backend installed: `pip install -e ../backend` in this
 
 ## Security
 
-For the security review (task 15):
+The full notes are in [security/agent-extension-pack.md](../security/agent-extension-pack.md), and the security review of this server's pull request, with what it fixed, is in [security/pr-audit.md](../security/pr-audit.md). In short:
 
 - **`log_steps` writes data, and the app's API has no logins.** Anyone who can run this server against an address can change that family's boards. Hence the local default, and one family per server.
 - **The tools act on what the assistant reads.** Text the assistant sees elsewhere (a web page, a file, an issue) could try to instruct it to log steps. Claude Code's permission prompt for destructive tools is the check; don't allow `log_steps` without asking.

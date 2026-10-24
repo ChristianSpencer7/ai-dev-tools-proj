@@ -79,13 +79,16 @@ paths:
       - $ref: "#/components/parameters/FamilyId"
     get:
       operationId: getFamily
-      summary: Get one family
+      summary: Get one family (without its invite code)
+      description: >
+        Anyone can list family ids, so the invite code is left out here as in the list. Only POST /families,
+        which creates the family, returns it.
       responses:
         "200":
           description: The family
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Family" }
+              schema: { $ref: "#/components/schemas/FamilySummary" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /families/{family_id}/members:
@@ -290,7 +293,11 @@ components:
       type: object
       required: [name]
       properties:
-        name: { type: string, minLength: 1, maxLength: 80 }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: No line breaks, tabs or other control characters (422); emoji are fine
         start_date:
           type: string
           format: date
@@ -301,7 +308,11 @@ components:
       required: [invite_code, name]
       properties:
         invite_code: { type: string }
-        name: { type: string, minLength: 1, maxLength: 40 }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: No line breaks, tabs or other control characters (422); emoji are fine
 
     Member:
       type: object

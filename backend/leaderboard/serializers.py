@@ -1,5 +1,6 @@
 """Request and response bodies. Each serializer matches a schema in openapi.yaml, field for field."""
 
+import unicodedata
 from datetime import timedelta
 
 from rest_framework import serializers
@@ -10,6 +11,8 @@ from leaderboard.models import Family, Member, Message, StepEntry
 MAX_DAILY_STEPS = 100_000
 MAX_ENTRIES_PER_REQUEST = 366  # a year of days, enough for any import or backfill
 HISTORY_DAYS = 14  # default range for GET /members/{id}/steps
+# Format characters that emoji are made of: the zero-width joiner (family emoji) and tags (flags such as Scotland's).
+EMOJI_FORMAT_CHARACTERS = {chr(0x200D), *map(chr, range(0xE0020, 0xE0080))}
 
 
 class FamilySummarySerializer(serializers.ModelSerializer):
@@ -28,14 +31,29 @@ class FamilySerializer(FamilySummarySerializer):
         read_only_fields = ["invite_code"]
 
 
+def no_control_characters(name: str) -> str:
+    """Refuses line breaks, tabs, and other control and format characters in a name.
+
+    Names are shown in the app, posted to Discord and read by AI assistants through the MCP server, where a line break
+    could make a name look like an instruction (security/pr-audit.md, finding 3). Emoji still work: the zero-width
+    joiner and the tag characters they're built from are allowed.
+    """
+    if any(unicodedata.category(c) in {"Cc", "Cf", "Zl", "Zp"} and c not in EMOJI_FORMAT_CHARACTERS for c in name):
+        raise serializers.ValidationError("Names can't contain line breaks, tabs or other control characters.")
+    return name
+
+
 class FamilyCreateSerializer(serializers.ModelSerializer):
-    """FamilyCreate: the body of POST /families. Names are trimmed; blank names are rejected."""
+    """FamilyCreate: the body of POST /families. Names are trimmed; blank names and control characters are rejected."""
 
     start_date = serializers.DateField(default=today_eastern)  # first day that counts; default today, Eastern
 
     class Meta:
         model = Family
         fields = ["name", "start_date"]
+
+    def validate_name(self, value: str) -> str:
+        return no_control_characters(value)
 
 
 class JoinRequestSerializer(serializers.Serializer):
@@ -47,6 +65,9 @@ class JoinRequestSerializer(serializers.Serializer):
     def validate_invite_code(self, value: str) -> str:
         # Codes are stored in uppercase, so "demo" and "DEMO" find the same family.
         return value.upper()
+
+    def validate_name(self, value: str) -> str:
+        return no_control_characters(value)
 
 
 class MemberSerializer(serializers.ModelSerializer):

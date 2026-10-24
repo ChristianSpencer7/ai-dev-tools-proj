@@ -61,7 +61,8 @@ def families(request: Request) -> Response:
 
 @api_view(["GET"])
 def family_detail(request: Request, family_id: int) -> Response:
-    return Response(FamilySerializer(get_family(family_id)).data)
+    """Without the invite code: anyone can list family ids, so returning it here would let anyone join any family."""
+    return Response(FamilySummarySerializer(get_family(family_id)).data)
 
 
 @api_view(["GET"])

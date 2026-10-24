@@ -90,7 +90,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
@@ -120,6 +120,46 @@ jobs:
           STEPBOARD_REQUIRE_BACKEND: "1"  # fail, rather than skip, if the backend tests can't run
         run: pytest -rs
 
+  security:
+    name: Security scans
+    # The scanners from security/findings.md. Each prints its whole report; only high and critical findings fail.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # gitleaks reads the whole history, not just the latest commit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the scanners (in their own environment, apart from the project's)
+        run: |
+          python -m venv /tmp/sectools
+          /tmp/sectools/bin/pip install --quiet bandit==1.9.4 pip-audit==2.10.1
+      - name: Bandit (Python code; fails on high severity)
+        run: |
+          paths="backend/stepboard backend/leaderboard mcp-server/stepboard_mcp agent-hooks"
+          skip="agent-hooks/tests,backend/leaderboard/migrations"
+          /tmp/sectools/bin/bandit -r $paths -x "$skip" --exit-zero
+          /tmp/sectools/bin/bandit -r $paths -x "$skip" --severity-level high --quiet
+      - name: pip-audit (the backend's and MCP server's dependencies, with dev tools; fails on any known vulnerability)
+        if: ${{ !cancelled() }}
+        # pip-audit's sources give no severity, so any finding fails. Each one so far was fixed by upgrading.
+        run: |
+          python -m venv /tmp/app
+          /tmp/app/bin/pip install --quiet "./backend[dev]" "./mcp-server[dev]"
+          /tmp/app/bin/pip freeze --exclude stepboard --exclude stepboard-mcp > /tmp/packages.txt
+          /tmp/sectools/bin/pip-audit -r /tmp/packages.txt --no-deps --disable-pip --desc
+      - name: npm audit (the frontend; fails on high or critical)
+        if: ${{ !cancelled() }}
+        working-directory: frontend
+        run: npm audit --audit-level=high
+      - name: gitleaks (secrets in any commit; fails on any)
+        if: ${{ !cancelled() }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory \
+            -e GIT_CONFIG_VALUE_0='*' zricethezav/gitleaks:v8.30.1 git /repo --redact -v
+
   docker:
     name: Docker images
     runs-on: ubuntu-latest
@@ -130,12 +170,23 @@ jobs:
         run: docker compose config --quiet
       - name: Build the backend and frontend images
         run: docker compose build
+      - name: Trivy (the images; fails on high or critical findings that have a fix)
+        # Findings with no released fix, such as the backend's Debian packages, are reported but don't fail:
+        # a rebuild can't remove them (security/findings.md). Once a fix is released, they fail until picked up.
+        run: |
+          trivy="docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache aquasec/trivy:0.76.1"
+          for image in $(docker compose config --images | grep -v '^postgres' | sort -u); do
+            echo "::group::Trivy: $image (every finding)"
+            $trivy image --scanners vuln --no-progress "$image"
+            echo "::endgroup::"
+            $trivy image --scanners vuln --no-progress --quiet --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$image"
+          done
 
   deploy:
     name: Deploy to production
     # Only for pushes to main (a merged pull request), and only once every check above has passed.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, frontend, mcp, docker]
+    needs: [backend, frontend, mcp, security, docker]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
