@@ -2,6 +2,8 @@
 
 Raw output of each scanner, run on 2026-10-24 against branch `security-scans` (from `main` at `d88e0f0`). What each finding means, and what was done about it, is in [findings.md](../findings.md).
 
+[after-fixes/](after-fixes/) holds the same scans rerun after the fixes, for the scans whose results changed: pip-audit on the backend image and local environment, npm audit, and Trivy on both images.
+
 | File | Scanner | What was scanned |
 | --- | --- | --- |
 | `bandit.txt` | Bandit 1.9.4 | Python code: `backend/stepboard`, `backend/leaderboard` (not migrations), `mcp-server/stepboard_mcp`, `agent-hooks` (not tests) |
@@ -24,7 +26,9 @@ python -m venv /tmp/sectools && /tmp/sectools/bin/pip install bandit pip-audit
 /tmp/sectools/bin/bandit -r backend/stepboard backend/leaderboard mcp-server/stepboard_mcp agent-hooks \
     -x agent-hooks/tests,backend/leaderboard/migrations
 docker compose build backend frontend
-docker run --rm --entrypoint pip stepboard-backend freeze --exclude stepboard > /tmp/image.txt
+# The image has no pip since the fixes, so list its packages with Python itself
+docker run --rm --entrypoint python stepboard-backend -c \
+    "import importlib.metadata as m; print('\n'.join(sorted(f'{d.name}=={d.version}' for d in m.distributions() if d.name != 'stepboard')))" > /tmp/image.txt
 /tmp/sectools/bin/pip-audit -r /tmp/image.txt --no-deps --disable-pip --desc
 
 # npm audit

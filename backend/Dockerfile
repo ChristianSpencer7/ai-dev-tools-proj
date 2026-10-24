@@ -8,7 +8,9 @@ WORKDIR /app
 COPY pyproject.toml manage.py ./
 COPY stepboard ./stepboard
 COPY leaderboard ./leaderboard
-RUN pip install . && rm -rf build *.egg-info  # leftovers from building the package
+# pip is only needed to install the app. Removing it afterwards also removes its known vulnerabilities, in pip and
+# the libraries it bundles, from the running image (security/findings.md).
+RUN pip install . && rm -rf build *.egg-info && pip uninstall --yes pip  # leftovers from building the package, then pip
 
 # The admin's and DRF's CSS and JavaScript, collected once at build time for WhiteNoise to serve.
 # collectstatic needs no database or real secret; this key exists only during this step.
