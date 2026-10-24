@@ -45,8 +45,9 @@ class StepboardApi:
         families = self.list_families()
         matches = [f for f in families if f["name"].casefold() == name.strip().casefold()]
         if not matches:
-            known = ", ".join(f["name"] for f in families) or "none"
-            raise ApiError(f'No family named "{name}". Families: {known}.', 404)
+            # The others aren't listed: the server works for one family, and other families' names have no business
+            # in the assistant's conversation (security/pr-audit.md).
+            raise ApiError(f'No family named "{name}". Check STEPBOARD_FAMILY in the MCP server\'s settings.', 404)
         if len(matches) > 1:
             raise ApiError(f'More than one family is named "{name}"; set STEPBOARD_FAMILY to a unique name.')
         return matches[0]

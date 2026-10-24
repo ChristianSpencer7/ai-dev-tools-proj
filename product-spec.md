@@ -16,6 +16,8 @@ A family wants a light, friendly competition around daily walking. Everyone uses
 ### Families and members
 - Create a family with a name and a start date (default: today, Eastern). The family gets a 6-character invite code.
 - Join a family with its invite code and a display name. Codes are not case-sensitive.
+- Family and member names can't contain line breaks, tabs or other control characters; emoji and accents are fine.
+- Only the person who creates a family is shown its invite code; listing or looking up families never shows it.
 - The demo family's invite code is `DEMO`.
 
 ### Logging steps

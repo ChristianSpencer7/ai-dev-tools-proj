@@ -26,7 +26,7 @@ Two environment variables, both optional:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `STEPBOARD_API_URL` | `http://localhost:8000` | The app's API. For the live site, `https://159-89-228-242.sslip.io/api` |
+| `STEPBOARD_API_URL` | `http://localhost:8000` | The app's API. For the live site, `https://159-89-228-242.sslip.io/api`. Must be `https://`, or `http://` to this machine; anything else stops the server at startup |
 | `STEPBOARD_FAMILY` | `Demo Family` | The one family the tools read and write |
 
 **It points at your local backend by default on purpose.** `log_steps` changes data, and the app has no logins, so a server pointed at the live site can change real boards. Use the live site deliberately, for reading or for a real family's own steps.
