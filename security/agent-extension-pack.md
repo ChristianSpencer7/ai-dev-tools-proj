@@ -8,7 +8,7 @@ The risks that come with letting AI agents work on and with this project, and wh
  the developer ──► Claude Code ──► MCP server ──► the app's API ──► the database
                     │    ▲                            ▲
         tools: Edit,│    │ reads: code, diffs,        │ anyone on the internet
-        Bash, ...   │    │ tool results, web pages    │ (no logins, see below)
+        Bash, ...   │    │ tool results, web pages    │ (each family's data needs its code)
                     ▼    │
                 the repository
 ```
@@ -23,7 +23,7 @@ The model's output reaches the world through tools: edits, shell commands, and `
 
 ## The MCP server
 
-**What it can do.** It can read one family's boards and members, and **write that family's step totals**. That covers any member and any past day, up to 100,000 steps a day, replacing what was there. It can't create families or members, delete anything, or reach any other family; it finds members by name within its one family. It has no database access and holds no secrets.
+**What it can do.** It can read one family's boards and members, and **write that family's step totals**. That covers any member and any past day, up to 100,000 steps a day, replacing what was there. It can't create families or members, delete anything, or reach any other family; it finds members by name within its one family. It has no database access. Its one secret is that family's invite code, which is the family's password.
 
 **What limits it:**
 
@@ -31,11 +31,11 @@ The model's output reaches the world through tools: edits, shell commands, and `
 | --- | --- |
 | Local by default (`http://localhost:8000`) | A write to the live site needs someone to set `STEPBOARD_API_URL` on purpose |
 | `https://`, or `http://` only to this machine | Names and totals never cross a network unencrypted ([audit](pr-audit.md), finding 5) |
-| One family, set by `STEPBOARD_FAMILY` | The model can't choose another family, and errors don't list other families' names (finding 4) |
+| One family: the one whose code is in `STEPBOARD_INVITE_CODE` (default `DEMO`) | The model can't choose another family, and the API refuses any other family's data without its code. The code is never put in the assistant's instructions or in error messages |
 | `log_steps` marked destructive | Claude Code asks before each call. **Keep it that way**: don't add `log_steps` to an allow list |
 | Steps checked in the tool's schema | Out-of-range values never reach the API |
 
-**What doesn't limit it: the API itself.** The API has no logins (audit finding 2, accepted for now). The MCP server only makes reaching the API easier; anyone could do the same with `curl`. That's why the live site holds only the Demo Family until the invite code becomes the family's password.
+**The API itself limits it too.** Since task 19, a family's invite code is its password: every request about a family needs that family's code, and wrong guesses are limited (audit finding 2, fixed). So an MCP server can only ever reach the family whose code it was given, and with the default `DEMO`, only the public Demo Family. Pointing it at a real family's live board takes that family's code and the live site's address, both set on purpose.
 
 ## Prompt injection
 
@@ -57,6 +57,7 @@ None of this makes injection impossible; it limits what a successful one can do.
 | `DJANGO_SECRET_KEY`, `DISCORD_WEBHOOK_URL` (production) | Only in the server's `.env` (`chmod 600`), outside the repository | No agent has access to the server. The deploy key can only run `scripts/deploy.sh` (`restrict,command=...` in `authorized_keys`) |
 | The same names, locally | The developer's `.env`, gitignored | **Deny rules** stop Claude Code reading `.env`, `.env.local` and `.env.production`, and the **guard** blocks shell commands that mention `.env` files (such as `cat .env`), which deny rules don't cover. The guard also blocks changing them |
 | The deploy SSH key, host and user | GitHub Actions secrets, only for the deploy job on `main` | Not in the repository. The MCP CI job and pull request runs get no secrets; the workflow token is `contents: read` |
+| A real family's invite code (its password) | With the family; in each member's browser (the app's code book); in `STEPBOARD_INVITE_CODE` for the MCP server | Never in the repository, `.mcp.json` or a chat. The API never repeats a code except when one is created or replaced, the MCP server keeps it out of the assistant's instructions and errors, and the ops scripts never print one. The Demo Family's `DEMO` is public on purpose |
 | A person's Claude Code permission choices | `.claude/settings.local.json` | **Gitignored** (added in this task), so personal allow rules and paths aren't committed |
 
 How it was checked:

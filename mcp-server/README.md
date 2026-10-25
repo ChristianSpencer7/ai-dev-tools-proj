@@ -29,7 +29,7 @@ Two environment variables, both optional:
 | `STEPBOARD_API_URL` | `http://localhost:8000` | The app's API. For the live site, `https://159-89-228-242.sslip.io/api`. Must be `https://`, or `http://` to this machine; anything else stops the server at startup |
 | `STEPBOARD_INVITE_CODE` | `DEMO` | The invite code of the one family the tools read and write. A family's code is its password, so a real one is a secret: set it in your environment, never in `.mcp.json` or any committed file, and don't paste it into a chat. If someone in the family makes a new code, the tools say the code "opens no family" until this is updated |
 
-**It points at your local backend by default on purpose.** `log_steps` changes data, and the app has no logins, so a server pointed at the live site can change real boards. Use the live site deliberately, for reading or for a real family's own steps.
+**It points at your local backend and the Demo Family by default on purpose.** `log_steps` changes data. Reaching a real family's live board takes both the live site's address and that family's invite code, so it can only happen deliberately, for a real family's own steps.
 
 ## Set up
 

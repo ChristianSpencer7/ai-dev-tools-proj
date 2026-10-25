@@ -83,10 +83,13 @@ On 2026-10-24 it was valid until 21 January 2027. If it's within two weeks of ex
 Digests are saved first and posted to Discord second, so first find out whether it was made at all:
 
 ```sh
-curl -s https://159-89-228-242.sslip.io/api/families/1/messages | python3 -m json.tool | grep -E '"(kind|created_at|discord_status)"' | head -12
+dc exec -T backend python manage.py shell -v 0 -c "
+from leaderboard.models import Message
+for m in Message.objects.select_related('family').order_by('-created_at')[:8]:
+    print(m.created_at.strftime('%Y-%m-%d %H:%M'), m.family.name, m.kind, m.discord_status)"
 ```
 
-(Use the family's id instead of `1`.)
+This asks the database directly, because the API needs each family's invite code, which a server operator may not have. Don't paste this output into an AI tool: it names real families.
 
 | What you see | It means | Fix |
 | --- | --- | --- |

@@ -45,9 +45,9 @@ After the fixes, the full stack started from the new images. The site and `/api/
 
 Each one needs an attacker who can already run commands in the container, or a program the app never uses. **When to revisit:** every rebuild pulls the latest `python:3.12-slim`, so fixes arrive as Debian releases them; the Trivy step in CI (step 5) reports the count on each run.
 
-### Accepted: no authentication
+### First accepted, then fixed: no authentication
 
-The PR audit found that the API has no logins: anyone who can reach it can read any family's boards and log steps for any member. The invite code only controls joining. Accepted for now, by the developer's decision, with the live site holding only the Demo Family. See [pr-audit.md](pr-audit.md#2-no-authentication-high-by-design-accepted-for-now) for the options and the planned fix.
+The PR audit found that the API had no logins: anyone who could reach it could read any family's boards and log steps for any member, and the invite code only controlled joining. It was accepted for now, by the developer's decision, with the live site holding only the Demo Family. **Task 19 fixed it:** the invite code is now the family's password, needed on every request about the family, with a limit on wrong guesses. See [pr-audit.md](pr-audit.md#2-no-authentication-high-by-design-fixed-in-task-19).
 
 ### Accepted: Bandit's low findings
 
