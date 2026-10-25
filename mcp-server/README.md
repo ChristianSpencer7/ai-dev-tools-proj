@@ -77,4 +77,4 @@ The full notes are in [security/agent-extension-pack.md](../security/agent-exten
 - **`log_steps` writes data, for whichever family the code opens.** The API refuses everything about a family without its invite code, so the server can only reach the family whose code it's given. The code is sent with every request and never put in the assistant's instructions or in error messages. It still defaults to the local backend and the public Demo Family, so writing to a real family's live board is a deliberate setting.
 - **The tools act on what the assistant reads.** Text the assistant sees elsewhere (a web page, a file, an issue) could try to instruct it to log steps. Claude Code's permission prompt for destructive tools is the check; don't allow `log_steps` without asking.
 - **Project `.mcp.json` servers can load without a prompt** in some clients, as in the VS Code extension.
-- **The server only calls the public API.** It has no database access and no secrets: no keys, no webhook URL.
+- **The server only calls the public API.** It has no database access. Its one secret is its family's invite code (`STEPBOARD_INVITE_CODE`); it has no keys and no webhook URL.

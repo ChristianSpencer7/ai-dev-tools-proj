@@ -265,6 +265,22 @@ Every backlog task followed the same loop:
 | The drill counted an empty list of Docker's health checks as one failed check, a bug from the task 16 follow-up | The rehearsal printed "0, of which failed: 1" | Counted by hand when empty; tested both ways |
 | The removed `GET /families` broke 72 existing tests | Running them | A test client that sends the right code by itself, so the tests stay about what they test. The access checks have their own tests with a plain client, and the mutation checks show those would notice what the helper skips |
 
+### 2026-10-25: After task 19, Discord and an uptime monitor
+
+- **Prompts:** *"let's go ahead with the discord webhook. can you guide me through it?"*, then *"let's add the uptime monitor as well"*. Both were done by the developer, with steps the AI wrote out, since they need the developer's accounts and the server's secrets.
+- **The webhook:**
+  - The AI never saw the URL, as the AI policy requires; its steps kept it out of the chat, out of the terminal output, and out of the repository.
+  - The developer added it to the server's `.env` and redeployed, then checked it was set with a command that prints only "set".
+  - They sent a digest from their own family, since the Demo Family's are never posted. Result: `sent`.
+- **The monitor:**
+  - UptimeRobot checks `/api/health` every 5 minutes and emails on failure.
+  - The AI recommended `/api/health` rather than the home page: in both database drills, the page kept loading while the API failed.
+  - **The new monitor said Down while the site was up**, reported by the developer. The AI checked the endpoint several ways: `GET` gave `200`, even with UptimeRobot's user agent, but **`HEAD` gave `405`**. Monitors often send `HEAD`, and DRF allows only the methods an endpoint lists. Fixed contract first: `HEAD /health` in `openapi.yaml`, then the view, with a test that failed with the same `405` before the fix. Checked through gunicorn and nginx on the local stack; other endpoints still refuse `HEAD`.
+- **Docs:**
+  - The runbook's and the ops README's known gaps now say what's closed, and that the scheduler still isn't monitored.
+  - The MCP README still said the server holds "no secrets", missed in task 19: it now names the invite code.
+  - The runbook's check for the webhook first pointed at a command the README doesn't have. The AI caught it while reviewing its own change, and replaced it with one in the runbook itself.
+
 ### Mistakes the AI made, and how they were caught
 
 Verification found these before they caused harm. They're recorded because catching them is the point of the loop.

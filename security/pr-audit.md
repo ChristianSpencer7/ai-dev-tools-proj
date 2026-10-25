@@ -71,7 +71,7 @@ The MCP server makes this easier to reach: an assistant with `log_steps` pointed
 
 Found while planning task 19, by reading `create_digest` against the plan to add a production webhook. `POST /families/{id}/digests`, the app's "Send weekly digest now", needed nothing and limited nothing, and each call posted to Discord. There's one webhook for the whole app, so with it set, anyone visiting the live site could press the button on the Demo Family again and again, and **each press would post to the real family's channel**. The scheduler already skipped the Demo Family; the button didn't. This audit should have found it the first time, in the digest endpoint's calls.
 
-- **Exposure:** none. Production has no webhook set, which the webhook drill confirmed in task 16.
+- **Exposure:** none. Production had no webhook set, which the webhook drill confirmed in task 16. The developer added one on 2026-10-25, after this fix was deployed.
 - **Fix:** the Demo Family's digests are saved but never posted to Discord (`discord_status` is `not_configured`), whatever sends them. Other families' digests need their code (finding 2).
 - **Tested:** a test sends the Demo Family three digests with a webhook set, and checks none was posted and all three were saved. A mutation check removing the rule fails it.
 

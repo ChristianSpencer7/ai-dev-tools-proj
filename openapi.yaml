@@ -44,6 +44,14 @@ paths:
                 required: [ok]
                 properties:
                   ok: { type: boolean }
+    head:
+      operationId: healthHead
+      summary: Liveness check, headers only
+      description: The same check as GET, for uptime monitors, which often send HEAD.
+      security: []
+      responses:
+        "200":
+          description: The backend is up and can reach the database (no body)
 
   /families:
     post:
