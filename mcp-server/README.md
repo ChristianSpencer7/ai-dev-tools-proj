@@ -27,7 +27,7 @@ Two environment variables, both optional:
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `STEPBOARD_API_URL` | `http://localhost:8000` | The app's API. For the live site, `https://159-89-228-242.sslip.io/api`. Must be `https://`, or `http://` to this machine; anything else stops the server at startup |
-| `STEPBOARD_FAMILY` | `Demo Family` | The one family the tools read and write |
+| `STEPBOARD_INVITE_CODE` | `DEMO` | The invite code of the one family the tools read and write. A family's code is its password, so a real one is a secret: set it in your environment, never in `.mcp.json` or any committed file, and don't paste it into a chat. If someone in the family makes a new code, the tools say the code "opens no family" until this is updated |
 
 **It points at your local backend by default on purpose.** `log_steps` changes data, and the app has no logins, so a server pointed at the live site can change real boards. Use the live site deliberately, for reading or for a real family's own steps.
 
@@ -54,7 +54,7 @@ It uses the official MCP SDK, **version 2** (`mcp>=2.3`). Version 2 renamed `Fas
 
 Notes:
 
-- `.mcp.json` runs `mcp-server/.venv/Scripts/python.exe` (Windows). On macOS or Linux, set `STEPBOARD_MCP_PYTHON=mcp-server/.venv/bin/python`. `STEPBOARD_API_URL` and `STEPBOARD_FAMILY` in your environment override the defaults in `.mcp.json`.
+- `.mcp.json` runs `mcp-server/.venv/Scripts/python.exe` (Windows). On macOS or Linux, set `STEPBOARD_MCP_PYTHON=mcp-server/.venv/bin/python`. `STEPBOARD_API_URL` and `STEPBOARD_INVITE_CODE` in your environment override the defaults in `.mcp.json`.
 - Claude Code asks before using a project's `.mcp.json` servers in some kinds of session. **In the VS Code extension, it loaded this one without asking.** Anyone who opens the repository there gets these tools, including `log_steps`; see [Security](#security).
 
 ## Tests
@@ -74,7 +74,7 @@ The second file needs the backend installed: `pip install -e ../backend` in this
 
 The full notes are in [security/agent-extension-pack.md](../security/agent-extension-pack.md), and the security review of this server's pull request, with what it fixed, is in [security/pr-audit.md](../security/pr-audit.md). In short:
 
-- **`log_steps` writes data, and the app's API has no logins.** Anyone who can run this server against an address can change that family's boards. Hence the local default, and one family per server.
+- **`log_steps` writes data, for whichever family the code opens.** The API refuses everything about a family without its invite code, so the server can only reach the family whose code it's given. The code is sent with every request and never put in the assistant's instructions or in error messages. It still defaults to the local backend and the public Demo Family, so writing to a real family's live board is a deliberate setting.
 - **The tools act on what the assistant reads.** Text the assistant sees elsewhere (a web page, a file, an issue) could try to instruct it to log steps. Claude Code's permission prompt for destructive tools is the check; don't allow `log_steps` without asking.
 - **Project `.mcp.json` servers can load without a prompt** in some clients, as in the VS Code extension.
 - **The server only calls the public API.** It has no database access and no secrets: no keys, no webhook URL.
