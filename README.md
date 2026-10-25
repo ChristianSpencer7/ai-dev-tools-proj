@@ -19,7 +19,7 @@ A family wants a light, friendly competition around daily walking. Everyone has 
 
 ## What it does
 
-- **Families and members:** create a family and get a 6-character invite code; anyone with the code joins under a display name. No accounts, no passwords.
+- **Families and members:** create a family and get a 6-character invite code; anyone with the code joins under a display name. No accounts: **the invite code is the family's password.** Everything about a family needs its code, and a code that was shared too widely can be replaced with a new one.
 - **Logging steps:** a day's total for any day up to today, from 0 to 100,000. Logging the same day again replaces it. `POST /steps` also takes up to a year of days at once, for imports from watches later.
 - **Boards:**
   - **Weekly:** Monday through today, compared with the same days last week.
@@ -39,6 +39,7 @@ On the live site, or locally after [`docker compose up`](#run-it-with-docker) at
 2. Go to **Join or create**, enter the invite code `DEMO` and your name, then **Join**.
 3. On **Log steps**, enter a big number for today and **Save**. Back on the board, you're ranked, likely with a medal.
 4. Open **Messages** and choose **Send weekly digest now**. The digest appears in the list.
+5. Back on **Join or create**, create your own family. You get its invite code; join it with your name, and it appears in the **Family** picker. Only this browser and the people you give the code to can see it. Under the family's code, **New invite code** replaces it, and the old one stops working.
 
 To use the admin (`/admin/`), create an account first: `docker compose exec backend python manage.py createsuperuser`.
 
@@ -68,7 +69,7 @@ flowchart LR
 | Hosting | One DigitalOcean server, Ubuntu, Docker | Only Caddy is reachable from the internet (ports 80 and 443) |
 | MCP server | Python, the official MCP SDK ([mcp-server/](mcp-server/)) | Lets an AI assistant read the boards and log steps, through the public API |
 
-The API has no logins: families join by invite code. That's a known, accepted risk while the live site holds only demo data ([security/pr-audit.md](security/pr-audit.md#2-no-authentication-high-by-design-accepted-for-now)).
+**There are no logins; a family's invite code is its password.** Every request about a family sends its code in the `X-Family-Code` header, and one check in the backend ([access.py](backend/leaderboard/access.py)) refuses anything else: `401` with no code, `403` with another family's. Wrong codes are limited to 20 a minute per visitor, so codes can't be guessed. There's no list of families: the frontend keeps the codes this browser knows, and finds each family with `GET /family`. Only the Demo Family's code, `DEMO`, is public ([security/pr-audit.md](security/pr-audit.md#2-no-authentication-high-by-design-fixed-in-task-19)).
 
 ## The database in each environment
 
@@ -95,7 +96,7 @@ docker compose up --build
 The first build takes a few minutes, then the logs scroll by. It's ready once the backend logs its first health check, `"GET /health HTTP/1.1" 200`, and the scheduler prints when the digests run next. On the very first start, Postgres also prints warnings such as `no usable system locales were found`; those are normal. Then:
 
 - **The app:** <http://localhost:8080>
-- **The API:** <http://localhost:8000/families>, for example (Django REST Framework's browsable pages)
+- **The API:** <http://localhost:8000/health>. Everything about a family needs its code in a header, which a browser's address bar can't send, so try it with curl: `curl -H "X-Family-Code: DEMO" http://localhost:8000/family`
 - **The admin:** <http://localhost:8000/admin/>, after `createsuperuser` (see [Try it](#try-it))
 
 `Ctrl+C` stops it. `docker compose down` removes the containers, and `docker compose down -v` also deletes the data, so the next start reloads the demo.
@@ -180,12 +181,12 @@ Everything is set by environment variables, all optional for local use. To chang
 
 1. **Make a webhook.** In the Discord channel for the digests: **Edit Channel** → **Integrations** → **Webhooks** → **New Webhook**, then **Copy Webhook URL**. This needs the "Manage Webhooks" permission.
 2. **Give it to the app.** In the project folder, copy `.env.example` to `.env` (PowerShell: `Copy-Item .env.example .env`), and set `DISCORD_WEBHOOK_URL=` to the URL. Then `docker compose up -d`, which restarts the backend and scheduler with it; without Docker, restart `runserver`.
-3. **Try it.** In the app, **Messages** → **Send weekly digest now**. It should appear in the channel, with the status `sent` in the app. If it says `failed`, the [runbook](ops/runbook.md#a-digest-didnt-arrive) says why.
+3. **Try it.** In the app, choose **your own family**, not the Demo Family, then **Messages** → **Send weekly digest now**. It should appear in the channel, with the status `sent` in the app. If it says `failed`, the [runbook](ops/runbook.md#a-digest-didnt-arrive) says why.
 
 From then on, the scheduler posts every Monday and on the 1st. On the live site, the URL goes in the server's `.env` instead ([docs/deployment.md](docs/deployment.md#changing-a-secret)).
 
 - **The URL works like a password:** anyone with it can post to the channel. It belongs only in `.env`, which is never committed; don't paste it into an AI chat. If it leaks, delete the webhook in Discord and make a new one.
-- **One webhook serves the whole app,** so every family's digests go to the same channel. That's why the scheduler leaves out the Demo Family.
+- **One webhook serves the whole app,** so every family's digests go to the same channel. That's why **the Demo Family's digests are never posted**: its code is public, so anyone could send one to your channel. They're still saved for its Messages page.
 
 ## AI-assisted development
 

@@ -17,8 +17,12 @@ A family wants a light, friendly competition around daily walking. Everyone uses
 - Create a family with a name and a start date (default: today, Eastern). The family gets a 6-character invite code.
 - Join a family with its invite code and a display name. Codes are not case-sensitive.
 - Family and member names can't contain line breaks, tabs or other control characters; emoji and accents are fine.
-- Only the person who creates a family is shown its invite code; listing or looking up families never shows it.
-- The demo family's invite code is `DEMO`.
+- Only the person who creates a family is shown its invite code; looking up a family never shows it.
+- **A family's invite code is its password.** Seeing or changing anything about a family (its members, steps, boards and messages) needs its code. Without one, the app says so (401); with another family's code, it refuses (403). There's no list of families: a family is found by its code.
+- Guessing codes is limited: after 20 wrong codes in a minute, a visitor waits for the rest of that minute (429).
+- Anyone with a family's code can replace it with a new one, for when it has been shared too widely. The old code stops working at once, for joining and everything else; members stay members, and need the new code.
+- The app remembers, in the browser, the codes of the families you created, joined or opened. On another device you open your family with its code, without joining again.
+- The demo family's invite code is `DEMO`, public on purpose, and can't be replaced.
 
 ### Logging steps
 - A member logs a day's total for any day up to today (Eastern). Totals are whole numbers from 0 to 100,000.
@@ -39,6 +43,7 @@ A family wants a light, friendly competition around daily walking. Everyone uses
 - **Monthly digest:** the 1st at 8:00 AM Eastern, all-time totals through the last day of the previous month.
 - Every digest is saved and shown on the Messages page, newest first.
 - If `DISCORD_WEBHOOK_URL` is set, the digest is also posted to Discord. A failed post is recorded on the message and does not lose the digest.
+- The demo family's digests are never posted to Discord, only saved: its code is public, so anyone can send one, and the webhook is a real family's channel.
 - "Send digest now" builds a weekly or monthly digest on demand, counting through today.
 
 ### Demo data
@@ -51,9 +56,10 @@ A family wants a light, friendly competition around daily walking. Everyone uses
 3. Logging the same day twice keeps only the newer total.
 4. Future days and totals outside 0–100,000 are rejected with a clear message.
 5. "Send digest now" adds a message to the Messages page without any Discord setup.
-6. With a webhook URL set, the same message also appears in the Discord channel.
+6. With a webhook URL set, the same message also appears in the Discord channel, for every family but the demo family.
 7. The backend serves exactly the operations in `openapi.yaml` (checked by a test).
+8. Without a family's invite code, nothing of that family can be read or changed; a replaced code stops working at once (checked by tests, including one over every operation in `openapi.yaml`).
 
 ## Not in scope yet
 
-Watch integrations, the Discord bot (`/join`, slash commands, private messages), sync alerts, the Thursday midweek post, and login. See the open questions in [docs/plan.md](docs/plan.md).
+Watch integrations, the Discord bot (`/join`, slash commands, private messages), sync alerts, the Thursday midweek post, and per-person logins (a family's members share its code). See the open questions in [docs/plan.md](docs/plan.md).

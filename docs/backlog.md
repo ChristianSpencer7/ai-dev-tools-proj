@@ -28,6 +28,7 @@ A small backlog for building the [plan](plan.md) with a Django backend instead o
 | 16 | Ops diagnosis and AI tool/data policy | 7 | S | ✅ Done |
 | 17 | AI workflow log | 1–8 | S | ✅ Done: [log](ai-workflow.md), an entry for every task |
 | 18 | README and end-to-end run | 8 | S | ✅ Done |
+| 19 | The invite code as the family's password | After 8 | M | 🔄 In progress |
 
 S = half a day or less, M = about a day.
 
@@ -51,7 +52,7 @@ Which tasks earn each course rubric criterion.
 | 10. Deployment | 11 |
 | 11. CI/CD | 11, 13 |
 | 12. Agent extension pack | 12, 14 |
-| 13. Security, audit and DevOps | 15, 16 |
+| 13. Security, audit and DevOps | 15, 16, 19 |
 | 14. Reproducibility | 10, 18 |
 
 Peer reviews are also required for points but aren't repo work, so they're tracked outside this backlog.
@@ -175,6 +176,16 @@ Builds on `AGENTS.md` and the MCP server from task 12.
 - Update `AGENTS.md` for the Django layout and commands.
 - Follow the README from a fresh clone on a clean machine and fix anything that doesn't work.
 - **Done when:** someone else can go from clone to a running, tested app using only the README.
+
+### 19. The invite code as the family's password
+Added after the 18 tasks, before a real family uses the live site: the fix the PR audit planned for its finding 2 (no authentication).
+- `openapi.yaml` first: every request about a family sends its code in `X-Family-Code`; `401`, `403` and `429` documented; no list of families; `GET /family` and a new-code endpoint.
+- The backend: one check (`access.py`), a limit on wrong codes, the Demo Family's digests never posted to Discord (the audit's finding 8), and the admin saving only usable codes.
+- The frontend: a code book in the browser, a picker of your own families, opening a family with its code, and **New invite code**.
+- The MCP server: `STEPBOARD_INVITE_CODE` instead of `STEPBOARD_FAMILY`.
+- CI's post-deploy check, `collect.sh` and the drills use the new endpoint; the webhook drill uses a temporary family.
+- Docs: the README, the product spec, the audit, the policy, the runbook and `AGENTS.md`.
+- **Done when:** on the live site, nothing about a family can be read or changed without its code, a replaced code stops working at once, and a test fails if any operation in `openapi.yaml` stops checking.
 
 ## Out of scope for this backlog
 

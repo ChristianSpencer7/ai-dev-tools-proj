@@ -17,14 +17,16 @@ class ApiError(Exception):
 
 
 class StepboardApi:
-    def __init__(self, base_url: str, client: httpx.Client | None = None):
+    def __init__(self, base_url: str, invite_code: str, client: httpx.Client | None = None):
         self.base_url = base_url.rstrip("/")
+        self.invite_code = invite_code  # sent as X-Family-Code with every request: the family's password
         # Tests pass a client with a fake transport; normally this talks to the real app.
         self.client = client or httpx.Client(timeout=TIMEOUT_SECONDS)
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+        headers = {**kwargs.pop("headers", {}), "X-Family-Code": self.invite_code}
         try:
-            response = self.client.request(method, f"{self.base_url}{path}", **kwargs)
+            response = self.client.request(method, f"{self.base_url}{path}", headers=headers, **kwargs)
         except httpx.HTTPError as error:
             raise ApiError(f"Can't reach the app at {self.base_url} ({type(error).__name__}). Is it running?") from error
         if response.is_success:
@@ -37,20 +39,18 @@ class StepboardApi:
 
     # --- Families and members ----------------------------------------------------------------------
 
-    def list_families(self) -> list[dict]:
-        return self._request("GET", "/families")
-
-    def find_family(self, name: str) -> dict:
-        """The family with this name (not case-sensitive). Names are how people refer to families."""
-        families = self.list_families()
-        matches = [f for f in families if f["name"].casefold() == name.strip().casefold()]
-        if not matches:
-            # The others aren't listed: the server works for one family, and other families' names have no business
-            # in the assistant's conversation (security/pr-audit.md).
-            raise ApiError(f'No family named "{name}". Check STEPBOARD_FAMILY in the MCP server\'s settings.', 404)
-        if len(matches) > 1:
-            raise ApiError(f'More than one family is named "{name}"; set STEPBOARD_FAMILY to a unique name.')
-        return matches[0]
+    def current_family(self) -> dict:
+        """The family the invite code opens (GET /family). The code itself is never put in a message."""
+        try:
+            return self._request("GET", "/family")
+        except ApiError as error:
+            if error.status == 403:
+                raise ApiError(
+                    "The invite code in STEPBOARD_INVITE_CODE opens no family. Check the MCP server's settings: "
+                    "someone in the family may have made a new code.",
+                    403,
+                ) from error
+            raise
 
     def list_members(self, family_id: int) -> list[dict]:
         return self._request("GET", f"/families/{family_id}/members")

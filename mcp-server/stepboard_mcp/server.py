@@ -101,16 +101,17 @@ def describe_board(board: dict) -> str:
 
 
 def build_server(config: Config, api: StepboardApi | None = None) -> MCPServer:
-    api = api or StepboardApi(config.api_url)
+    api = api or StepboardApi(config.api_url, config.invite_code)
     server = MCPServer(
         name="stepboard",
         title="Family Step Leaderboard",
-        instructions=INSTRUCTIONS + f"Family: {config.family}. App: {config.api_url}.",
+        # Never the invite code: it's the family's password. The tools' results name the family.
+        instructions=INSTRUCTIONS + f"App: {config.api_url}.",
     )
 
     def family() -> dict:
         try:
-            return api.find_family(config.family)
+            return api.current_family()
         except ApiError as error:
             raise ToolError(str(error))
 

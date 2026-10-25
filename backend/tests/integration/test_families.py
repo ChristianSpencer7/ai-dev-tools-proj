@@ -56,21 +56,19 @@ def test_clients_cannot_choose_the_invite_code(client):
     assert body["invite_code"] != "MINE00"
 
 
-def test_family_list_leaves_out_invite_codes(client, family):
-    post(client, "/families", {"name": "Grandparents"})
-    listed = client.get("/families").json()
-    assert [f["name"] for f in listed] == ["Spencers", "Grandparents"]
-    assert all(set(f) == {"id", "name", "start_date"} for f in listed)
+def test_there_is_no_list_of_families(client, family):
+    """Listing every family let anyone find any family's id and data (security/pr-audit.md); a family is found by its code."""
+    assert client.get("/families").status_code == 405
 
 
 def test_get_family_leaves_out_the_invite_code(client, family):
-    """Only the creator (POST /families) and the code's holders see it; anyone can list ids (security/pr-audit.md)."""
+    """The caller already has the code; only creating a family and making a new code show one."""
     assert client.get(f"/families/{family['id']}").json() == {k: family[k] for k in ("id", "name", "start_date")}
 
 
-def test_listing_and_fetching_families_never_reveals_a_code(client, family):
-    for listed in client.get("/families").json():
-        assert family["invite_code"] not in client.get(f"/families/{listed['id']}").content.decode()
+def test_the_family_for_a_code(plain_client, family):
+    response = plain_client.get("/family", headers={"X-Family-Code": family["invite_code"].lower()})  # any case
+    assert response.json() == {k: family[k] for k in ("id", "name", "start_date")}
 
 
 def test_unknown_family(client):

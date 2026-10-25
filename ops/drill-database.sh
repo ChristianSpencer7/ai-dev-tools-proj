@@ -16,10 +16,11 @@ DOWN_FOR="${DOWN_FOR:-120}"  # seconds; the health check (every 30 s, 3 failures
 compose() { docker compose ${COMPOSE_FILES:--f docker-compose.yml -f docker-compose.prod.yml} "$@"; }
 redact() { "${PYTHON:-python3}" "$OPS/redact.py" --keep "$SERVER_IP"; }
 section() { printf '\n===== %s =====\n' "$1"; }
-status() { curl -s -o /dev/null --max-time 10 -w '%{http_code} (%{time_total}s)' "$BASE_URL$1"; }  # code and time taken
+# Code and time taken. /api/family needs a family's code (openapi.yaml); the Demo Family's is public.
+status() { curl -s -o /dev/null --max-time 10 -H 'X-Family-Code: DEMO' -w '%{http_code} (%{time_total}s)' "$BASE_URL$1"; }
 probe() {
-  printf '%s  /api/health %s  /api/families %s  / %s  | backend: %s | db: %s\n' "$(date -u +%H:%M:%S)" \
-    "$(status /api/health)" "$(status /api/families)" "$(status /)" \
+  printf '%s  /api/health %s  /api/family %s  / %s  | backend: %s | db: %s\n' "$(date -u +%H:%M:%S)" \
+    "$(status /api/health)" "$(status /api/family)" "$(status /)" \
     "$(compose ps --all --format '{{.Status}}' backend)" "$(compose ps --all --format '{{.Status}}' db)"
 }
 # A 500's traceback is many lines; its first line (ERROR django.request) and last (the exception) say what failed.
@@ -36,7 +37,10 @@ requests() {  # backend log text: the requests, other than health checks
 health_counts() {  # backend log text
   local docker
   docker="$(grep 'GET /health HTTP' <<<"$1" | grep 'Python-urllib')"
-  echo "(Docker's health checks: $(grep -c . <<<"$docker"), of which failed: $(grep -vc '" 200 ' <<<"$docker");" \
+  # grep -c on an empty string still sees one (empty) line, so an empty list is counted as 0 by hand.
+  local total=0 failed=0
+  if [ -n "$docker" ]; then total=$(grep -c . <<<"$docker"); failed=$(grep -vc '" 200 ' <<<"$docker"); fi
+  echo "(Docker's health checks: $total, of which failed: $failed;" \
     "this drill's own /api/health probes: $(grep 'GET /health HTTP' <<<"$1" | grep -c 'curl/'))"
 }
 
@@ -69,9 +73,9 @@ until_time=$(( $(date +%s) + DOWN_FOR ))
 while [ "$(date +%s)" -lt "$until_time" ]; do probe; sleep 5; done
 
 section "What a visitor gets"
-for path in /api/health /api/families; do
+for path in /api/health /api/family; do
   echo "--- GET $path"
-  curl -s -i --max-time 10 "$BASE_URL$path" | sed -n '1p;/^[Cc]ontent-[Tt]ype/p;/^\r\{0,1\}$/,$p' | head -c 600
+  curl -s -i --max-time 10 -H 'X-Family-Code: DEMO' "$BASE_URL$path" | sed -n '1p;/^[Cc]ontent-[Tt]ype/p;/^\r\{0,1\}$/,$p' | head -c 600
   echo
 done
 
@@ -95,9 +99,9 @@ site_ok=""
 give_up=$(( $(date +%s) + 180 ))
 while [ "$(date +%s)" -lt "$give_up" ]; do
   line="$(probe)"; echo "$line"
-  if [ -z "$site_ok" ] && [[ "$line" == *"/api/families 200 "* ]]; then site_ok=$(( $(date +%s) - started )); fi
+  if [ -z "$site_ok" ] && [[ "$line" == *"/api/family 200 "* ]]; then site_ok=$(( $(date +%s) - started )); fi
   # The backend's status is the one just before "| db:"; the database's own "(healthy)" mustn't count.
-  if [[ "$line" == *"/api/families 200 "* && "$line" == *"(healthy) | db:"* ]]; then break; fi
+  if [[ "$line" == *"/api/family 200 "* && "$line" == *"(healthy) | db:"* ]]; then break; fi
   sleep 3
 done
 echo "Site answering again after: ${site_ok:-?}s; backend marked healthy again after: $(( $(date +%s) - started ))s" \

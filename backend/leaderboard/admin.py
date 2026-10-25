@@ -1,8 +1,30 @@
 """Django admin, for looking at and fixing the family's data by hand."""
 
+from django import forms
 from django.contrib import admin
 
+from leaderboard.invites import CODE_LENGTH, INVITE_ALPHABET
 from leaderboard.models import Family, Member, Message, StepEntry
+from leaderboard.seed import DEMO_INVITE_CODE
+
+
+class FamilyForm(forms.ModelForm):
+    """Saves an invite code only in a form that works: joining and the X-Family-Code check compare in capitals,
+    so a code saved as "abc234" could never be used. New codes are easier made with the app's "New invite code"."""
+
+    class Meta:
+        model = Family
+        fields = "__all__"
+
+    def clean_invite_code(self) -> str:
+        code = self.cleaned_data["invite_code"].strip().upper()
+        if code == DEMO_INVITE_CODE:
+            return code
+        if len(code) != CODE_LENGTH or any(c not in INVITE_ALPHABET for c in code):
+            raise forms.ValidationError(
+                f"An invite code is {CODE_LENGTH} characters from {INVITE_ALPHABET} (no 0, O, 1 or I)."
+            )
+        return code
 
 
 class MemberInline(admin.TabularInline):
@@ -14,6 +36,7 @@ class MemberInline(admin.TabularInline):
 
 @admin.register(Family)
 class FamilyAdmin(admin.ModelAdmin):
+    form = FamilyForm
     list_display = ["name", "start_date", "invite_code", "created_at"]
     search_fields = ["name", "invite_code"]
     inlines = [MemberInline]

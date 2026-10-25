@@ -22,12 +22,13 @@ An AI-assisted security review of a real, merged pull request, and what changed 
 | # | Severity | Finding | Status |
 | --- | --- | --- | --- |
 | 1 | **High** | `GET /families/{id}` returns the family's **invite code**, and `GET /families` lists every family's id, to anyone | **Fixed** |
-| 2 | **High** (by design) | The API has **no authentication**. Anyone who can reach it can read any family's boards and log steps for any member; the MCP server's `log_steps` inherits that | **Accepted for now** (developer's decision); the live site stays demo-only until it's fixed |
+| 2 | **High** (by design) | The API has **no authentication**. Anyone who can reach it can read any family's boards and log steps for any member; the MCP server's `log_steps` inherits that | **Fixed** in task 19 (2026-10-25): the invite code is the family's password. First accepted for now, by the developer's decision |
 | 3 | Medium | **Prompt injection through names.** Names are chosen by whoever joins, the API accepts line breaks in them, and the server put them into tool results unchanged | **Fixed** in the MCP server and the backend |
 | 4 | Low | An unknown `STEPBOARD_FAMILY` made the error message **list every family's name** into the assistant's conversation | **Fixed** |
 | 5 | Low | `STEPBOARD_API_URL` accepted **plain `http://` to any host**, sending names and step totals unencrypted | **Fixed** |
 | 6 | Low | `log_steps` finds the member by a **unique name prefix** ("da" → "Dad"), and the permission prompt shows what the model typed, not who it matched | Accepted |
 | 7 | Info | `.mcp.json` starts a program from a path inside the repository, and the VS Code extension loads it **without a prompt** | Accepted, documented (step 4 notes) |
+| 8 | Medium | **Found later, in task 19:** "Send digest now" works for anyone, on any family, posting to Discord each time. With a webhook set, anyone could flood the family's channel through the public Demo Family | **Fixed** in task 19 |
 
 ### 1. Invite codes readable by anyone (High, fixed)
 
@@ -37,7 +38,7 @@ An AI-assisted security review of a real, merged pull request, and what changed 
 - **Fix:** the contract first (`openapi.yaml`: `getFamily` returns `FamilySummary`), then `views.family_detail`. Only `POST /families` still returns the code, to the person who created the family. The frontend never called `getFamily`; it shows the code from the create response.
 - **Exposure so far:** the live site has only the Demo Family, whose code (`DEMO`) is public by design. No real family's code was exposed.
 
-### 2. No authentication (High, by design; accepted for now)
+### 2. No authentication (High, by design; fixed in task 19)
 
 The design chose "invite code only", with no logins (see [docs/ai-workflow.md](../docs/ai-workflow.md#decisions-made-by-the-developer)). The code gates **joining**, but nothing else:
 
@@ -54,6 +55,25 @@ The MCP server makes this easier to reach: an assistant with `log_steps` pointed
 - **(c) real accounts**, against the plan's "no outside accounts needed"
 
 **Before a real family uses the live site**, (b) is the planned fix, as its own task. Until then, nothing private belongs on the live site: anyone can read or change what's there.
+
+**Update, 2026-10-25: fixed in task 19, with option (b).** Every request about a family now sends that family's invite code in the `X-Family-Code` header (`openapi.yaml`, security scheme `FamilyCode`):
+
+- **The checks, in one place** (`backend/leaderboard/access.py`): no code is `401`, an unknown family or member is `404`, another family's code is `403`. Only the health check, creating a family and joining one are open.
+- **No list of families:** `GET /families` is gone. A client with a code finds its family with `GET /family`.
+- **Guessing is limited:** after 20 wrong codes in a minute (in the header, or when joining), a visitor gets `429`, counted by the address Caddy puts in `X-Forwarded-For`. With about a billion codes, guessing one is hopeless.
+- **A code can be replaced:** `POST /families/{id}/invite-code`, from the app's "New invite code". The old code stops working at once, for joining and for every request. The Demo Family's stays `DEMO`.
+- **The frontend and the MCP server send the code:** the frontend keeps a code book in the browser; the MCP server takes `STEPBOARD_INVITE_CODE`, a secret like the webhook URL.
+- **Tested:** a test checks that every operation in `openapi.yaml` refuses a request without a code exactly when the contract says it needs one, so a new endpoint can't forget the check. Five mutation checks, each breaking one protection, were all caught.
+
+**What it doesn't do:** everyone with the code is equal, so a family member can still log steps for another; there are no per-person logins. A code is only as private as the people it's shared with, which the app says where codes are shown.
+
+### 8. Anyone could post to a family's Discord channel (Medium, fixed)
+
+Found while planning task 19, by reading `create_digest` against the plan to add a production webhook. `POST /families/{id}/digests`, the app's "Send weekly digest now", needed nothing and limited nothing, and each call posted to Discord. There's one webhook for the whole app, so with it set, anyone visiting the live site could press the button on the Demo Family again and again, and **each press would post to the real family's channel**. The scheduler already skipped the Demo Family; the button didn't. This audit should have found it the first time, in the digest endpoint's calls.
+
+- **Exposure:** none. Production has no webhook set, which the webhook drill confirmed in task 16.
+- **Fix:** the Demo Family's digests are saved but never posted to Discord (`discord_status` is `not_configured`), whatever sends them. Other families' digests need their code (finding 2).
+- **Tested:** a test sends the Demo Family three digests with a webhook set, and checks none was posted and all three were saved. A mutation check removing the rule fails it.
 
 ### 3. Prompt injection through names (Medium, fixed)
 

@@ -23,6 +23,8 @@ class FakeApp:
 
     def __init__(self):
         self.families = [{"id": 1, "name": "Demo Family", "start_date": "2026-09-21"}]
+        self.code = "DEMO"  # the family's invite code: like the real app, anything else is refused
+        self.codes_sent = []
         self.members = {1: [{"id": 1, "family_id": 1, "name": "Dad"}, {"id": 2, "family_id": 1, "name": "Mom"},
                             {"id": 3, "family_id": 1, "name": "Sam"}, {"id": 4, "family_id": 1, "name": "Samira"}]}
         self.steps = {}  # (member_id, day) -> steps
@@ -43,9 +45,13 @@ class FakeApp:
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(f"{request.method} {request.url.path}")
+        self.codes_sent.append(request.headers.get("X-Family-Code"))
         path, q = request.url.path, request.url.params
-        if path == "/families":
-            return httpx.Response(200, json=self.families)
+        if request.headers.get("X-Family-Code") != self.code:
+            detail = "No family has that invite code" if path == "/family" else "That invite code isn't this family's"
+            return httpx.Response(403, json={"detail": detail})
+        if path == "/family":
+            return httpx.Response(200, json=self.families[0])
         if path == "/families/1/members":
             return httpx.Response(200, json=self.members[1])
         if path in ("/families/1/leaderboards/weekly", "/families/1/leaderboards/all-time"):
@@ -79,9 +85,9 @@ def pinned_today(monkeypatch):
     monkeypatch.setattr(server_module, "today_eastern", lambda: TODAY)
 
 
-def make_server(app, family="Demo Family", transport=None):
-    api = StepboardApi(BASE, client=httpx.Client(transport=transport or httpx.MockTransport(app.handle)))
-    return build_server(Config(api_url=BASE, family=family), api=api)
+def make_server(app, code="DEMO", transport=None):
+    api = StepboardApi(BASE, code, client=httpx.Client(transport=transport or httpx.MockTransport(app.handle)))
+    return build_server(Config(api_url=BASE, invite_code=code), api=api)
 
 
 def call(server, tool, args=None):
@@ -108,8 +114,16 @@ def test_tools_and_their_marks(app):
     assert tools["log_steps"].input_schema["required"] == ["member", "steps"]
 
 
-def test_instructions_name_the_family(app):
-    assert "Family: Demo Family." in make_server(app).instructions
+def test_the_instructions_never_contain_the_invite_code(app):
+    """The code is the family's password; what the assistant is told goes to its provider."""
+    instructions = make_server(app, code="SPEN23").instructions
+    assert "SPEN23" not in instructions and instructions.endswith(f"App: {BASE}.")
+
+
+def test_every_request_sends_the_familys_code(app):
+    call(make_server(app), "get_leaderboard")
+    call(make_server(app), "log_steps", {"member": "Dad", "steps": 5_000})
+    assert app.codes_sent and set(app.codes_sent) == {"DEMO"}
 
 
 # --- Reading the boards --------------------------------------------------------------------------
@@ -265,9 +279,10 @@ def test_a_name_with_line_breaks_cant_add_lines_to_a_result(app):
 # --- Settings and connection problems ------------------------------------------------------------
 
 
-def test_an_unknown_family_names_the_setting_not_the_other_families(app):
-    text, is_error = call(make_server(app, family="Smiths"), "list_members")
-    assert is_error and 'No family named "Smiths". Check STEPBOARD_FAMILY' in text
+def test_a_code_that_opens_no_family_names_the_setting(app):
+    text, is_error = call(make_server(app, code="WRONG2"), "list_members")
+    assert is_error and "The invite code in STEPBOARD_INVITE_CODE opens no family" in text
+    assert "WRONG2" not in text  # the code isn't repeated back
     assert "Demo Family" not in text
 
 
@@ -294,8 +309,10 @@ def test_anything_else_is_refused_at_startup(monkeypatch, url):
 
 def test_config_defaults_to_the_local_app_and_the_demo_family(monkeypatch):
     monkeypatch.delenv("STEPBOARD_API_URL", raising=False)
-    monkeypatch.delenv("STEPBOARD_FAMILY", raising=False)
-    assert Config.from_env() == Config(api_url=LOCAL_API_URL, family="Demo Family")
+    monkeypatch.delenv("STEPBOARD_INVITE_CODE", raising=False)
+    assert Config.from_env() == Config(api_url=LOCAL_API_URL, invite_code="DEMO")
     monkeypatch.setenv("STEPBOARD_API_URL", "https://159-89-228-242.sslip.io/api/")
-    monkeypatch.setenv("STEPBOARD_FAMILY", "Spencers")
-    assert Config.from_env() == Config(api_url="https://159-89-228-242.sslip.io/api", family="Spencers")
+    monkeypatch.setenv("STEPBOARD_INVITE_CODE", " spen23 ")
+    config = Config.from_env()
+    assert config == Config(api_url="https://159-89-228-242.sslip.io/api", invite_code="SPEN23")
+    assert "SPEN23" not in repr(config)  # a secret: kept out of logs and tracebacks

@@ -1,8 +1,12 @@
 """HTTPS behind a proxy (DJANGO_HTTPS=1): plain HTTP is redirected, except the container's own health check."""
 
+from datetime import date
+
 import pytest
 from django.conf import settings
 from django.test import Client, override_settings
+
+from leaderboard.models import Family
 
 pytestmark = pytest.mark.django_db
 
@@ -15,15 +19,18 @@ BEHIND_HTTPS_PROXY = override_settings(
 
 @BEHIND_HTTPS_PROXY
 def test_plain_http_is_redirected_to_https():
-    response = Client(HTTP_HOST="stepboard.example.com").get("/families")
+    response = Client(HTTP_HOST="stepboard.example.com").get("/family")
     assert response.status_code == 301
-    assert response["Location"] == "https://stepboard.example.com/families"
+    assert response["Location"] == "https://stepboard.example.com/family"
 
 
 @BEHIND_HTTPS_PROXY
 def test_requests_the_proxy_marks_as_https_are_served():
     """The proxy (Caddy, then nginx) passes X-Forwarded-Proto: https; without it every request would loop."""
-    response = Client(HTTP_HOST="stepboard.example.com", HTTP_X_FORWARDED_PROTO="https").get("/families")
+    Family.objects.create(name="Spencers", start_date=date(2026, 10, 1), invite_code="SPEN23")
+    response = Client(HTTP_HOST="stepboard.example.com", HTTP_X_FORWARDED_PROTO="https").get(
+        "/family", headers={"X-Family-Code": "SPEN23"}
+    )
     assert response.status_code == 200
 
 

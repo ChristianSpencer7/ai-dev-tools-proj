@@ -37,8 +37,10 @@ section() { printf '\n===== %s =====\n' "$1"; }
   compose exec -T backend python -c "import urllib.request as u; r = u.urlopen('http://localhost:8000/health', timeout=5); print(r.status, r.read().decode())" 2>&1
 
   section "The public site, through Caddy"
-  for path in /api/health /api/families /; do
-    curl -s -o /dev/null --max-time 10 -w "GET https://$SITE$path -> %{http_code} in %{time_total}s\n" "https://$SITE$path"
+  # /api/family needs a family's code (openapi.yaml); the Demo Family's is public.
+  for path in /api/health /api/family /; do
+    curl -s -o /dev/null --max-time 10 -H 'X-Family-Code: DEMO' \
+      -w "GET https://$SITE$path -> %{http_code} in %{time_total}s\n" "https://$SITE$path"
   done
   curl -s -o /dev/null --max-time 10 -w "GET http://$SITE/ -> %{http_code}, redirects to %{redirect_url}\n" "http://$SITE/"
 

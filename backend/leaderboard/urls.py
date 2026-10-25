@@ -9,7 +9,9 @@ urlpatterns = [
     path("families", views.families, name="families"),
     # Listed before families/<id>; <int:...> wouldn't match "join" anyway, but the order makes that obvious.
     path("families/join", views.join_family, name="join-family"),
+    path("family", views.family_for_this_code, name="family-for-code"),
     path("families/<int:family_id>", views.family_detail, name="family-detail"),
+    path("families/<int:family_id>/invite-code", views.new_invite_code, name="new-invite-code"),
     path("families/<int:family_id>/members", views.family_members, name="family-members"),
     path("families/<int:family_id>/leaderboards/weekly", views.weekly_leaderboard, name="weekly-leaderboard"),
     path("families/<int:family_id>/leaderboards/all-time", views.alltime_leaderboard, name="alltime-leaderboard"),

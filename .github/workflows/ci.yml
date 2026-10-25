@@ -223,7 +223,7 @@ jobs:
         run: |
           site_is_up() {
             curl -fsS --max-time 10 "$SITE_URL/api/health" > /dev/null &&
-              curl -fsS --max-time 10 "$SITE_URL/api/families" | grep -q '"Demo Family"' &&
+              curl -fsS --max-time 10 -H 'X-Family-Code: DEMO' "$SITE_URL/api/family" | grep -q '"Demo Family"' &&
               curl -fsS --max-time 10 "$SITE_URL/" | grep -q '<title>Family Step Leaderboard</title>'
           }
           for attempt in $(seq 1 30); do

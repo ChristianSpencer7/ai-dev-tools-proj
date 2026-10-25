@@ -23,7 +23,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--include-demo",
             action="store_true",
-            help="Also send to the Demo Family. Off by default: there is one Discord webhook for every family.",
+            help="Also make the Demo Family's digest. It's saved for the Messages page but never posted to Discord.",
         )
 
     def handle(self, *args, kind: str, as_of: date | None, include_demo: bool, **options):

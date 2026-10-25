@@ -23,12 +23,15 @@ BOARD_FOR_KIND = {
 def send_digest(family: Family, kind: str, as_of: date) -> Message:
     """Builds the digest text, posts it to Discord if configured, and saves it.
 
-    post_to_discord never raises, so the message is saved whatever happens with Discord.
+    post_to_discord never raises, so the message is saved whatever happens with Discord. The Demo Family's digests
+    are never posted: its code is public, so anyone can send one, and the webhook is a real family's channel.
     """
     text = BOARD_FOR_KIND[kind](family, as_of).text()
-    return Message.objects.create(
-        family=family, kind=kind, as_of=as_of, text=text, discord_status=post_to_discord(text)
-    )
+    if family.invite_code == DEMO_INVITE_CODE:
+        discord_status = Message.DiscordStatus.NOT_CONFIGURED
+    else:
+        discord_status = post_to_discord(text)
+    return Message.objects.create(family=family, kind=kind, as_of=as_of, text=text, discord_status=discord_status)
 
 
 @dataclass
@@ -43,8 +46,8 @@ class ScheduledRun:
 def send_scheduled_digests(kind: str, as_of: date, include_demo: bool = False) -> ScheduledRun:
     """Sends one digest of this kind to every family that should get one. Safe to run twice.
 
-    Skips the Demo Family (unless include_demo: there is one webhook, so its digest would reach the real
-    family's channel), families that hadn't started by as_of, and families that already have this digest.
+    Skips the Demo Family unless include_demo (and even then its digest is only saved, never posted: see
+    send_digest), families that hadn't started by as_of, and families that already have this digest.
     One family's failure is logged and doesn't stop the others.
     """
     run = ScheduledRun()

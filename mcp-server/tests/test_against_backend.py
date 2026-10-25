@@ -70,9 +70,12 @@ def app_url(tmp_path_factory):
         process.wait(timeout=10)
 
 
+DEMO = {"X-Family-Code": "DEMO"}  # the Demo Family's code, public on purpose
+
+
 def weekly_leader(url: str) -> str:
-    family = next(f for f in httpx.get(f"{url}/families").json() if f["name"] == "Demo Family")
-    return httpx.get(f"{url}/families/{family['id']}/leaderboards/weekly").json()["standings"][0]["name"]
+    family = httpx.get(f"{url}/family", headers=DEMO).json()
+    return httpx.get(f"{url}/families/{family['id']}/leaderboards/weekly", headers=DEMO).json()["standings"][0]["name"]
 
 
 def call(client_target, tool, args=None):
@@ -85,7 +88,7 @@ def call(client_target, tool, args=None):
 
 def test_who_is_winning_and_logging_steps(app_url):
     """The backlog's done check: answer "who's winning this week?", then log steps for a member."""
-    server = build_server(Config(api_url=app_url, family="Demo Family"))
+    server = build_server(Config(api_url=app_url, invite_code="DEMO"))
 
     text, is_error = call(server, "get_leaderboard")
     assert not is_error
@@ -101,7 +104,7 @@ def test_who_is_winning_and_logging_steps(app_url):
 
 
 def test_the_apps_checks_still_apply(app_url):
-    server = build_server(Config(api_url=app_url, family="Demo Family"))
+    server = build_server(Config(api_url=app_url, invite_code="DEMO"))
     text, is_error = call(server, "log_steps", {"member": "Dad", "steps": 1, "day": "2099-01-01"})
     assert is_error and "These days haven't happened yet: 2099-01-01." in text
 
@@ -110,7 +113,15 @@ def test_over_stdio_as_claude_code_runs_it(app_url):
     """Starts the server as its own program, the way .mcp.json has Claude Code start it."""
     params = StdioServerParameters(
         command=sys.executable, args=["-m", "stepboard_mcp"],
-        env={**os.environ, "STEPBOARD_API_URL": app_url, "STEPBOARD_FAMILY": "Demo Family"},
+        env={**os.environ, "STEPBOARD_API_URL": app_url, "STEPBOARD_INVITE_CODE": "DEMO"},
     )
     text, is_error = call(params, "get_leaderboard", {"board": "all_time"})
     assert not is_error and text.startswith("🏅 All-time Steps")
+
+
+def test_the_real_app_refuses_a_code_that_opens_no_family(app_url):
+    """With the wrong code the tools get nothing: not the board, not the members, and no steps are logged."""
+    server = build_server(Config(api_url=app_url, invite_code="WRONG2"))
+    for tool, args in [("get_leaderboard", {}), ("list_members", {}), ("log_steps", {"member": "Dad", "steps": 1})]:
+        text, is_error = call(server, tool, args)
+        assert is_error and "opens no family" in text, tool

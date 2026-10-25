@@ -1,11 +1,27 @@
 openapi: 3.1.0
 info:
   title: Family Step Leaderboard API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     The frontend, the scheduler and the MCP server all talk to the backend only
     through this API. Days are calendar dates in Eastern time (America/New_York);
     a day ends at midnight Eastern.
+
+    A family's invite code is its password. Every request about a family (its
+    members, steps, boards and messages) sends that family's code in the
+    `X-Family-Code` header (security scheme `FamilyCode`). Only checking the
+    backend's health, creating a family and joining one work without it. The
+    Demo Family's code is `DEMO`, and it's public on purpose.
+
+    The checks go in this order: no code at all is `401`; then a family or member
+    that doesn't exist is `404`; then a code that isn't that family's is `403`.
+    After 20 wrong codes in a minute (in the header, or an invite code when
+    joining), the same client gets `429` for the rest of that minute, so codes
+    can't be guessed.
+
+security:
+  - FamilyCode: []
+
 servers:
   - url: http://localhost:8000
     description: Backend run directly
@@ -17,6 +33,7 @@ paths:
     get:
       operationId: health
       summary: Liveness check
+      security: []
       responses:
         "200":
           description: The backend is up and can reach the database
@@ -29,20 +46,14 @@ paths:
                   ok: { type: boolean }
 
   /families:
-    get:
-      operationId: listFamilies
-      summary: List families (without invite codes)
-      responses:
-        "200":
-          description: All families
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/FamilySummary" }
     post:
       operationId: createFamily
       summary: Create a family
+      description: >
+        Open to anyone. This response is the only time the new family's invite code is shown
+        to its creator; from then on, it's needed for everything about the family. There's no
+        list of families: a family is found by its code (GET /family).
+      security: []
       requestBody:
         required: true
         content:
@@ -60,6 +71,8 @@ paths:
     post:
       operationId: joinFamily
       summary: Join a family with its invite code
+      description: The code goes in the body, not the header. A wrong one counts toward the limit (429).
+      security: []
       requestBody:
         required: true
         content:
@@ -73,6 +86,24 @@ paths:
               schema: { $ref: "#/components/schemas/Member" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /family:
+    get:
+      operationId: getFamilyForCode
+      summary: The family this code opens
+      description: >
+        How a client that has only a code (the frontend after a reload, the MCP server) finds
+        its family. A code that opens no family is 403.
+      responses:
+        "200":
+          description: The family
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilySummary" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /families/{family_id}:
     parameters:
@@ -81,15 +112,41 @@ paths:
       operationId: getFamily
       summary: Get one family (without its invite code)
       description: >
-        Anyone can list family ids, so the invite code is left out here as in the list. Only POST /families,
-        which creates the family, returns it.
+        The code isn't repeated in responses: whoever asks already has it. Only POST /families
+        (creating a family) and POST /families/{family_id}/invite-code (a new code) show one.
       responses:
         "200":
           description: The family
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FamilySummary" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /families/{family_id}/invite-code:
+    parameters:
+      - $ref: "#/components/parameters/FamilyId"
+    post:
+      operationId: newInviteCode
+      summary: Replace the family's invite code with a new one
+      description: >
+        For when a code has been shared too widely. Anyone with the current code can do it. The
+        old code stops working at once, for joining and for every request, so the new one has to
+        be shared with the rest of the family. Members stay members. The Demo Family's code can't
+        be changed (422): it's public by design.
+      responses:
+        "200":
+          description: The family, with its new code
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Family" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /families/{family_id}/members:
     parameters:
@@ -105,7 +162,10 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /members/{member_id}/steps:
     parameters:
@@ -126,6 +186,7 @@ paths:
     get:
       operationId: listMemberSteps
       summary: A member's daily step entries, newest first
+      description: The code is the member's family's.
       responses:
         "200":
           description: Step entries
@@ -134,8 +195,11 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/StepEntry" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /steps:
     post:
@@ -145,6 +209,10 @@ paths:
         Used by manual entry in the app and by imports (later: Apple Shortcut,
         Fitbit sync, Garmin helper). Each entry is a day's total. Logging the same
         day again replaces the earlier total rather than adding to it.
+
+        The code is the member's family's. Without one it's 401 straight away; the body
+        is checked next (422), and then the member it names (404, or 403 for another
+        family's member).
       requestBody:
         required: true
         content:
@@ -158,8 +226,11 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/StepEntry" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /families/{family_id}/leaderboards/weekly:
     parameters:
@@ -177,8 +248,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Leaderboard" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /families/{family_id}/leaderboards/all-time:
     parameters:
@@ -194,8 +268,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Leaderboard" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /families/{family_id}/messages:
     parameters:
@@ -211,7 +288,10 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Message" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /families/{family_id}/digests:
     parameters:
@@ -223,6 +303,10 @@ paths:
         The scheduler calls this on Mondays (weekly, `as_of` = the Sunday that just
         ended) and on the 1st (monthly, `as_of` = the last day of the previous
         month). The app's "Send digest now" uses the default `as_of` of today.
+
+        The Demo Family's digests are saved but never posted to Discord
+        (`discord_status` is `not_configured`): anyone can send one, and the webhook
+        belongs to a real family's channel.
       requestBody:
         required: true
         content:
@@ -234,8 +318,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Message" }
+        "401": { $ref: "#/components/responses/NoCode" }
+        "403": { $ref: "#/components/responses/WrongCode" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
 components:
   parameters:
@@ -251,7 +338,29 @@ components:
       description: Last day to count, YYYY-MM-DD (default today, Eastern). A bad date is a 422.
       schema: { type: string, format: date }
 
+  securitySchemes:
+    FamilyCode:
+      type: apiKey
+      in: header
+      name: X-Family-Code
+      description: The family's invite code (not case-sensitive). The Demo Family's is DEMO.
+
   responses:
+    NoCode:
+      description: No X-Family-Code header
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    WrongCode:
+      description: The code isn't this family's (for GET /family, it opens no family)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Too many wrong codes from this client in the last minute
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: The family or member does not exist
       content:
@@ -434,3 +543,4 @@ components:
         discord_status:
           type: string
           enum: [not_configured, sent, failed]
+          description: not_configured when no webhook is set, and always for the Demo Family

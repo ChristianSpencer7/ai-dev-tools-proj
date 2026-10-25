@@ -241,6 +241,29 @@ Every backlog task followed the same loop:
 | No steps for connecting Discord, only a table row | **The developer's** question | A "Connect Discord" section: making the webhook, `.env`, testing it, and that the URL works like a password |
 | A reader who did the Docker section first would clone twice; `python` is `python3` on macOS and many Linux systems | The developer's question; reasoning | Both said in the README |
 
+### 2026-10-25: Task 19, the invite code as the family's password
+
+- **Prompt:** *"can you elaborate on this?"*, about what had to happen before a real family uses the live site; then *"can you edit the invite code?"*, then *"let's do 3, with 2 included"*. That meant the code as the family's password, together with a way to replace a code.
+- **Found while explaining it:** checking the digest endpoint before recommending a production webhook, the AI found that **anyone could post to a family's Discord channel** through the public Demo Family's "Send digest now". Production had no webhook, so nothing was exposed. It's recorded as the audit's finding 8, which the task 15 audit should have caught.
+- **Delegated, in 7 steps:**
+  - the contract first, then the backend (one check, `access.py`), then the frontend (a code book in the browser, "New invite code"), then the MCP server
+  - everything that probes the site, then the docs
+- **Verified:**
+  - **The contract:** an OpenAPI 3.1 validator, plus every endpoint that needs a code documenting `401`, `403` and `429`.
+  - **A new test over every operation in `openapi.yaml`:** each must refuse a request without a code exactly when the contract says it needs one.
+  - **The contract response test** produced every new response.
+  - **Mutation checks:** five on the backend and two on the frontend, each breaking one protection. All were caught, the forgotten check by that new test. Another on the MCP server: with the code not sent, 14 tests failed.
+  - **The local stack:** the drills rehearsed, including a hangup mid-run, and the MCP server through nginx.
+  - **CI:** fully green, including Postgres.
+- **What verification caught:**
+
+| Problem | How it was caught | Fix |
+| --- | --- | --- |
+| **The webhook drill would have quietly tested nothing:** its digests went to the Demo Family, whose digests are now never posted, so both "failures" would have read `not_configured` | Reasoning about what the change does to the drill, before running it | A temporary "Webhook drill" family, checked with its code (never printed) and deleted however the drill ends. Rehearsed, including a hangup |
+| CI's post-deploy check, `collect.sh` and the drills asked the removed list of families; one also assumed the Demo Family is id 1 (it was 3 in the local database) | Searching for every probe; the local check showed the id | `GET /api/family` with the public code `DEMO`; ids looked up, not assumed |
+| The drill counted an empty list of Docker's health checks as one failed check, a bug from the task 16 follow-up | The rehearsal printed "0, of which failed: 1" | Counted by hand when empty; tested both ways |
+| The removed `GET /families` broke 72 existing tests | Running them | A test client that sends the right code by itself, so the tests stay about what they test. The access checks have their own tests with a plain client, and the mutation checks show those would notice what the helper skips |
+
 ### Mistakes the AI made, and how they were caught
 
 Verification found these before they caused harm. They're recorded because catching them is the point of the loop.
@@ -274,6 +297,12 @@ Verification found these before they caused harm. They're recorded because catch
 - The first end-to-end Docker run wasn't clean: the clone's folder had the same name as the working copy, so Compose reused the working copy's database. Caught from the leftover drill digests; rerun after removing the volume. The README now tells readers about the same thing.
 - The first filter for the WhiteNoise warning named the module that raises it, but Python attributes the warning to Django's module, so it matched nothing. Caught by rerunning the tests without the static folder; fixed to match the message.
 - The end-to-end script was generated on Windows with Windows line endings, which bash rejects. Caught on its first run.
+- **The task 15 audit missed finding 8** (task 19): "Send digest now" posting to Discord for anyone. The audit followed the MCP server's calls but didn't ask what the digest endpoint could be used for. Caught when explaining why a production webhook should wait.
+- Edit scripts failed on escaping twice in task 19: once bash rejected the quoting of a long contract edit, once an escaped quote didn't survive the tool, so the text never matched. Caught by the scripts' own checks, which stop before writing anything; redone with the edit tool.
+- The first fix for the leaderboard query-count tests looked up the code inside the very count it was meant to stay out of. Caught by reading it back before running it.
+- `make_server`'s signature was updated but not the line inside it, so 17 MCP tests failed at once. Caught by the run.
+- A long Postgres test run was started while Docker Desktop was stopped, and spent 9 minutes timing out. Should have checked Docker first; since then, Docker is checked before anything that needs it.
+- The AI said the MCP server's instructions would still name the family, then wrote them without it. Caught before reporting, and corrected in the report.
 - **A dropped SSH session could have left the production database stopped.** The drill's safety traps were in a subshell, so a hangup reaching the main shell first ended the script without restarting the database. The AI had claimed the database "is started again however the script ends", without testing a hangup. Caught when the developer pasted a partial output mid-drill and the AI checked what would happen if the session dropped. In a local test the database did stay down; after the fix, it came back within about 3 seconds.
 
 ## Decisions made by the developer
@@ -300,6 +329,12 @@ Verification found these before they caused harm. They're recorded because catch
 | Where to run the planned failures | Production, or a local copy of the stack | Production (the webhook drill without touching the server's settings) |
 | Which diagnosis findings to fix now | Six, from log noise to JSON errors | Health checks, log limits, build cache, error logging; the rest recorded as known gaps |
 | Who checks the README works | The AI in clean environments, or a person following it | Both |
+| What to do about invite codes | Change one family's code in the admin; a "new invite code" feature; the code as the family's password | The password, with the new-code feature included (and the admin made safe) |
+| A refused request | 401 for no code and 403 for a wrong one, or 404 for both | 401 and 403 |
+| The Demo Family | Needs `DEMO` like any family, or is open | Needs `DEMO` (sent by default) |
+| Who can make a new code | Anyone with the current code, or nobody but an admin | Anyone with the current code |
+| Wrong-code limit | A number per visitor per minute | 20 a minute |
+| The Demo Family's digests | Still post to Discord, or never | Saved, never posted (`not_configured`) |
 
 ## Adding an entry
 

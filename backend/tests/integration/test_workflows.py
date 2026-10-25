@@ -30,8 +30,10 @@ class Api:
     def __init__(self, client):
         self.client = client
 
-    def get(self, path, **params):
-        response = self.client.get(path, params)
+    def get(self, path, code=None, **params):
+        # The test client sends a family's code for /families/{id}/... by itself; /family needs one given.
+        headers = {"X-Family-Code": code} if code else None
+        response = self.client.get(path, params, headers=headers)
         assert response.status_code == 200, (path, response.status_code, response.content)
         return response.json()
 
@@ -63,8 +65,8 @@ def test_a_reviewers_first_visit(api):
     """The README's walkthrough: the demo is already there, join it, log steps, climb the board, send a digest."""
     run_command("seed_demo")  # what the container does on start
 
-    families = api.get("/families")
-    demo = next(f for f in families if f["name"] == "Demo Family")
+    demo = api.get("/family", code="DEMO")  # what the app does on a first visit: the Demo Family's code is public
+    assert demo["name"] == "Demo Family"
     board = api.get(f"/families/{demo['id']}/leaderboards/weekly")
     assert board["title"] == "📊 Week So Far — Oct 12–14"
     assert [s["medal"] for s in board["standings"]][:3] == ["🥇", "🥈", "🥉"]
@@ -203,8 +205,41 @@ def test_scheduled_digests_appear_in_the_app(api):
     messages = api.get(f"/families/{family['id']}/messages")
     assert len(messages) == 1
     assert messages[0]["text"].splitlines()[:2] == ["📊 Week So Far — Oct 12–13", "🥇 Chris — 21,000 (new)"]
-    demo = next(f for f in api.get("/families") if f["name"] == "Demo Family")
-    assert api.get(f"/families/{demo['id']}/messages") == []  # skipped: one webhook is shared by every family
+    demo = api.get("/family", code="DEMO")
+    assert api.get(f"/families/{demo['id']}/messages") == []  # skipped: the scheduler leaves the Demo Family out
 
     run_command("send_digests", "weekly")
     assert len(api.get(f"/families/{family['id']}/messages")) == 1
+
+
+def test_a_familys_code_keeps_outsiders_out_and_can_be_replaced(plain_client):
+    """Invite code as the family's password (security/pr-audit.md, finding 2), as a family would meet it."""
+    def call(method, path, code=None, body=None):
+        headers = {"X-Family-Code": code} if code else None
+        if method == "get":
+            return plain_client.get(path, headers=headers)
+        return plain_client.post(path, body or {}, content_type="application/json", headers=headers)
+
+    family = call("post", "/families", body={"name": "Spencers"}).json()
+    code, fid = family["invite_code"], family["id"]
+    me = call("post", "/families/join", body={"invite_code": code.lower(), "name": "Chris"}).json()
+    assert call("post", "/steps", code, {"member_id": me["id"], "entries": [{"day": TODAY.isoformat(), "steps": 9_000}]}).status_code == 200
+
+    # An outsider: no code, then a guess. Neither gets the board, nor can log steps for Chris.
+    assert call("get", f"/families/{fid}/leaderboards/weekly").status_code == 401
+    assert call("get", f"/families/{fid}/leaderboards/weekly", "WRONG2").status_code == 403
+    assert call("post", "/steps", "WRONG2", {"member_id": me["id"], "entries": [{"day": TODAY.isoformat(), "steps": 1}]}).status_code == 403
+    assert call("get", "/family", code).json() == {"id": fid, "name": "Spencers", "start_date": TODAY.isoformat()}
+
+    # The code was shared too widely: the family makes a new one.
+    replaced = call("post", f"/families/{fid}/invite-code", code)
+    assert replaced.status_code == 200
+    new_code = replaced.json()["invite_code"]
+    assert new_code != code
+
+    # The old code stops working at once, for reading and for joining; the new one works, and Chris is still in.
+    assert call("get", f"/families/{fid}/members", code).status_code == 403
+    assert call("post", "/families/join", body={"invite_code": code, "name": "Stranger"}).status_code == 404
+    assert [m["name"] for m in call("get", f"/families/{fid}/members", new_code).json()] == ["Chris"]
+    board = call("get", f"/families/{fid}/leaderboards/weekly", new_code).json()
+    assert [(s["name"], s["steps"]) for s in board["standings"]] == [("Chris", 9_000)]

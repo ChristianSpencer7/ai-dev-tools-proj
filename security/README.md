@@ -15,7 +15,7 @@ The security work on the family step leaderboard: what was scanned, what was fou
   - The frontend image went from 212 findings (2 critical) to 0, and the frontend's dev tools from 6 findings to 0.
   - The backend image's remaining high findings are Debian packages with no fix released yet. They're explained one by one in [findings.md](findings.md#accepted-debian-packages-in-the-backend-image).
 - **The PR audit found a real leak:** anyone could read every family's invite code. It's fixed, along with prompt injection through member names.
-- **One known risk is accepted for now:** the API has no logins, so anyone can read and change any family's boards. The live site holds only the Demo Family until the invite code becomes the family's password ([pr-audit.md](pr-audit.md#2-no-authentication-high-by-design-accepted-for-now)).
+- **The invite code is the family's password** (task 19). Every request about a family needs its code, guessing is limited, and a leaked code can be replaced. Before that, the API had no logins, and anyone could read and change any family's boards ([pr-audit.md](pr-audit.md#2-no-authentication-high-by-design-fixed-in-task-19)). The same task stopped the Demo Family's digests reaching Discord, since anyone can send one (finding 8).
 - **The scanners run in CI** on every push and pull request, and deploying waits for them.
 
 ## Already in place before task 15
