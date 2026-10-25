@@ -22,11 +22,11 @@ From one health report and two drills on the production server, 2026-10-24 ([dia
 - **Confirmed on the live site:**
   - with the database down, the page still loads but the API fails, and it recovers 5 seconds after the database is back
   - a failed Discord post keeps the digest and never logs the webhook URL
+- **Closed since, on 2026-10-25:** an external uptime monitor emails on an outage, and production posts digests to Discord.
 - **Known gaps, in the [runbook](runbook.md#known-gaps):**
-  - nothing alerts on an outage
+  - the scheduler isn't monitored
   - API errors are HTML
   - backups are by hand
-  - production has no webhook set
 
 ## Running them
 

@@ -94,7 +94,7 @@ This asks the database directly, because the API needs each family's invite code
 | What you see | It means | Fix |
 | --- | --- | --- |
 | No digest for that day | The scheduler didn't run it | `dc ps scheduler`; when it runs next: `dc logs scheduler \| grep -E '(weekly\|monthly) +[A-Z]'`. To send it now (safe to repeat; families that have it are skipped): `dc exec backend python manage.py send_digests weekly` (or `monthly`) |
-| `discord_status: not_configured` | No webhook is set. **This is production's state as of 2026-10-24**: digests appear only on the Messages page | If they should go to Discord, add `DISCORD_WEBHOOK_URL` to `.env` yourself, then `./scripts/deploy.sh` |
+| `discord_status: not_configured` | For the Demo Family, always: its digests are never posted. For any other family, no webhook is set. Production has had one since 2026-10-25, so check it's still there: `grep -c '^DISCORD_WEBHOOK_URL=.' .env` prints `1`, without showing the value | If it's missing, add `DISCORD_WEBHOOK_URL` to `.env` yourself, then `./scripts/deploy.sh` |
 | `discord_status: failed` | It was saved, but the post failed | Scheduled digests: `dc logs --since 2d scheduler \| grep 'Discord webhook post failed'`; see below. A digest sent by hand prints the same line in your terminal |
 
 The log line names the error type, never the URL ([drill](diagnosis/2026-10-24-production-drill-webhook.txt)):
@@ -133,10 +133,9 @@ Practise these before you need them, and repeat them after changes to the Compos
 
 ## Known gaps
 
-- **Nothing notices an outage.** `(unhealthy)` is only visible in `dc ps`. A free external uptime monitor, checking `https://159-89-228-242.sslip.io/api/health` every few minutes and emailing on failure, would close this; it needs an account, so it's for the site's owner to set up.
+- **The scheduler isn't monitored.** Since 2026-10-25, an external uptime monitor (UptimeRobot, run by the site's owner) checks `https://159-89-228-242.sslip.io/api/health` every 5 minutes and emails on failure. That covers Caddy, nginx, Django and the database. If the scheduler alone stopped, the site would look fine while digests quietly didn't go out; a heartbeat check after each scheduled run would cover it.
 - **API errors are HTML, not JSON.** A `500` from `/api/...` is Django's HTML error page, while the frontend expects `{"detail": ...}`. It shows as a generic error in the app.
 - **Backups are by hand.** Nothing makes them automatically; the commands are in [docs/deployment.md](../docs/deployment.md#backups).
-- **No webhook in production**, so nobody is notified of a new digest (see above).
 
 ## Sharing output
 
