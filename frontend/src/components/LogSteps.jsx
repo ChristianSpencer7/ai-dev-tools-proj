@@ -8,7 +8,7 @@ export default function LogSteps({ member, onLogged }) {
   const [status, setStatus] = useState(null);
   const [history, setHistory] = useState([]);
 
-  const loadHistory = useCallback(() => api.memberSteps(member.id).then(setHistory), [member.id]);
+  const loadHistory = useCallback(() => api.memberSteps(member).then(setHistory), [member]);
 
   useEffect(() => {
     loadHistory().catch(() => setHistory([]));
@@ -17,7 +17,7 @@ export default function LogSteps({ member, onLogged }) {
   const submit = async (event) => {
     event.preventDefault();
     try {
-      await api.logSteps(member.id, [{ day, steps: Number(steps) }]);
+      await api.logSteps(member, [{ day, steps: Number(steps) }]);
       setStatus({ ok: true, text: `Saved ${Number(steps).toLocaleString()} steps for ${day}.` });
       setSteps('');
       await loadHistory();
