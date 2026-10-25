@@ -29,9 +29,9 @@ from leaderboard.serializers import (
 # Every view about a family gets it through leaderboard/access.py, which checks the X-Family-Code header first.
 
 
-@api_view(["GET"])
+@api_view(["GET", "HEAD"])
 def health(request: Request) -> Response:
-    """Liveness check: the backend is up and can reach the database."""
+    """Liveness check: the backend is up and can reach the database. HEAD too, for uptime monitors."""
     with connection.cursor() as cursor:
         cursor.execute("SELECT 1")
     return Response({"ok": True})
