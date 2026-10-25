@@ -255,6 +255,7 @@ Every backlog task followed the same loop:
   - **Mutation checks:** five on the backend and two on the frontend, each breaking one protection. All were caught, the forgotten check by that new test. Another on the MCP server: with the code not sent, 14 tests failed.
   - **The local stack:** the drills rehearsed, including a hangup mid-run, and the MCP server through nginx.
   - **CI:** fully green, including Postgres.
+  - **On the live site, after merging pull request #10:** no list of families (`405`); a board without a code `401`, with a wrong one `403`; logging steps without a code `401`; the Demo Family opens with `DEMO`, and its code can't be replaced. The developer's reconnected MCP server found the Demo Family by its code and read the board.
 - **What verification caught:**
 
 | Problem | How it was caught | Fix |

@@ -28,11 +28,11 @@ A small backlog for building the [plan](plan.md) with a Django backend instead o
 | 16 | Ops diagnosis and AI tool/data policy | 7 | S | ✅ Done |
 | 17 | AI workflow log | 1–8 | S | ✅ Done: [log](ai-workflow.md), an entry for every task |
 | 18 | README and end-to-end run | 8 | S | ✅ Done |
-| 19 | The invite code as the family's password | After 8 | M | 🔄 In progress |
+| 19 | The invite code as the family's password | After 8 | M | ✅ Done |
 
 S = half a day or less, M = about a day.
 
-Progress as of 2026-10-24: all 18 tasks are done, and the app is live at <https://159-89-228-242.sslip.io>, deployed from `main` by CI.
+Progress as of 2026-10-25: all 19 tasks are done, and the app is live at <https://159-89-228-242.sslip.io>, deployed from `main` by CI.
 
 ## Rubric coverage
 
