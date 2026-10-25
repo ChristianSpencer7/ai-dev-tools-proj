@@ -39,6 +39,9 @@ ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "loca
 # Optional. Without it, digests appear only on the in-app Messages page.
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL") or None
 
+# Wrong invite codes a client may send in a minute before it gets 429 (leaderboard/access.py, openapi.yaml).
+WRONG_CODE_LIMIT = 20
+
 
 def env_list(name: str) -> list[str]:
     return [item.strip() for item in os.environ.get(name, "").split(",") if item.strip()]

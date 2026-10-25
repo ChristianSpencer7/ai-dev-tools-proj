@@ -7,6 +7,7 @@ test_contract.py checks the routes; this file checks what they return, which is 
 from datetime import date
 
 import pytest
+from django.conf import settings
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
@@ -94,58 +95,103 @@ def check_against_contract(path: str, method: str, response) -> None:
 
 # --- The calls: every documented operation, with its success and error cases -------------------------
 
+WRONG = "WRONG2"  # a well-formed code no family has
+
 
 @pytest.fixture
 def ids(client):
-    """A seeded demo family plus a joined member with steps and a saved digest."""
+    """A seeded demo family (code DEMO) with a member, steps and a saved digest; and an ordinary family, Spencers."""
     family = seed_demo_family(SEEDED_ON)
     member = Member.objects.filter(family=family).first()
     client.post(f"/families/{family.id}/digests", {"kind": "weekly"}, content_type="application/json")
-    return {"family": family.id, "member": member.id}
+    other = Family.objects.create(name="Spencers", start_date=SEEDED_ON, invite_code="SPEN23")
+    return {"family": family.id, "member": member.id, "code": family.invite_code, "other": other.id, "other_code": "SPEN23"}
 
 
 def calls(ids: dict) -> list[tuple[str, str, dict]]:
-    """(contract path, method, request) for each case. The request's "url" fills in the path's parameters."""
-    f, m = ids["family"], ids["member"]
+    """(contract path, method, request) for each case, in order. The request's "url" fills in the path's parameters,
+    and "code" is sent as X-Family-Code. Wrong codes count toward the limit, so the 11 that count come first,
+    then enough more to reach the limit, then the 429s."""
+    f, m, ok, o = ids["family"], ids["member"], ids["code"], ids["other"]
     json = {"content_type": "application/json"}
-    return [
-        ("/health", "get", {"url": "/health"}),
-        ("/families", "get", {"url": "/families"}),
-        ("/families", "post", {"url": "/families", "data": {"name": "Spencers"}, **json}),
-        ("/families", "post", {"url": "/families", "data": {"name": ""}, **json}),
-        ("/families/join", "post", {"url": "/families/join", "data": {"invite_code": "demo", "name": "Chris"}, **json}),
-        ("/families/join", "post", {"url": "/families/join", "data": {"invite_code": "NOPE", "name": "Chris"}, **json}),
-        ("/families/join", "post", {"url": "/families/join", "data": {"invite_code": "DEMO"}, **json}),
-        ("/families/{family_id}", "get", {"url": f"/families/{f}"}),
-        ("/families/{family_id}", "get", {"url": "/families/999"}),
-        ("/families/{family_id}/members", "get", {"url": f"/families/{f}/members"}),
-        ("/families/{family_id}/members", "get", {"url": "/families/999/members"}),
-        ("/members/{member_id}/steps", "get", {"url": f"/members/{m}/steps", "data": {"to": SEEDED_ON.isoformat()}}),
-        ("/members/{member_id}/steps", "get", {"url": "/members/999/steps"}),
-        ("/members/{member_id}/steps", "get", {"url": f"/members/{m}/steps", "data": {"to": "soon"}}),
-        ("/steps", "post", {"url": "/steps", "data": {"member_id": m, "entries": [{"day": "2026-10-01", "steps": 5000}]}, **json}),
-        ("/steps", "post", {"url": "/steps", "data": {"member_id": 999, "entries": [{"day": "2026-10-01", "steps": 1}]}, **json}),
-        ("/steps", "post", {"url": "/steps", "data": {"member_id": m, "entries": []}, **json}),
-        ("/families/{family_id}/leaderboards/weekly", "get", {"url": f"/families/{f}/leaderboards/weekly", "data": {"as_of": "2026-10-11"}}),
-        ("/families/{family_id}/leaderboards/weekly", "get", {"url": "/families/999/leaderboards/weekly"}),
-        ("/families/{family_id}/leaderboards/weekly", "get", {"url": f"/families/{f}/leaderboards/weekly", "data": {"as_of": "soon"}}),
-        ("/families/{family_id}/leaderboards/all-time", "get", {"url": f"/families/{f}/leaderboards/all-time", "data": {"as_of": "2026-10-14"}}),
-        ("/families/{family_id}/leaderboards/all-time", "get", {"url": "/families/999/leaderboards/all-time"}),
-        ("/families/{family_id}/leaderboards/all-time", "get", {"url": f"/families/{f}/leaderboards/all-time", "data": {"as_of": "soon"}}),
-        ("/families/{family_id}/messages", "get", {"url": f"/families/{f}/messages"}),
-        ("/families/{family_id}/messages", "get", {"url": "/families/999/messages"}),
-        ("/families/{family_id}/digests", "post", {"url": f"/families/{f}/digests", "data": {"kind": "monthly"}, **json}),
-        ("/families/{family_id}/digests", "post", {"url": "/families/999/digests", "data": {"kind": "weekly"}, **json}),
-        ("/families/{family_id}/digests", "post", {"url": f"/families/{f}/digests", "data": {"kind": "daily"}, **json}),
+    steps = lambda member, entries=None: {"member_id": member, "entries": [{"day": "2026-10-01", "steps": 5000}] if entries is None else entries}  # noqa: E731
+    family_paths = [  # (contract path, method, url, body for a POST)
+        ("/families/{family_id}", "get", f"/families/{f}", None),
+        ("/families/{family_id}/members", "get", f"/families/{f}/members", None),
+        ("/families/{family_id}/leaderboards/weekly", "get", f"/families/{f}/leaderboards/weekly", None),
+        ("/families/{family_id}/leaderboards/all-time", "get", f"/families/{f}/leaderboards/all-time", None),
+        ("/families/{family_id}/messages", "get", f"/families/{f}/messages", None),
+        ("/families/{family_id}/digests", "post", f"/families/{f}/digests", {"kind": "weekly"}),
+        ("/families/{family_id}/invite-code", "post", f"/families/{f}/invite-code", {}),
+    ]
+    member_paths = [
+        ("/members/{member_id}/steps", "get", f"/members/{m}/steps", None),
+        ("/steps", "post", "/steps", steps(m)),
     ]
 
+    def call(path, method, url, body=None, code=None, **extra):
+        request = {"url": url, **extra}
+        if body is not None:
+            request.update(data=body, **json)
+        if code:
+            request["code"] = code
+        return (path, method, request)
 
-def test_every_response_matches_openapi_yaml(client, ids):
+    result = [
+        # Open: no code needed
+        call("/health", "get", "/health"),
+        call("/families", "post", "/families", {"name": "Spencers"}),
+        call("/families", "post", "/families", {"name": ""}),
+        call("/families/join", "post", "/families/join", {"invite_code": "demo", "name": "Chris"}),
+        call("/families/join", "post", "/families/join", {"invite_code": "NOPE", "name": "Chris"}),  # a wrong code: 1
+        call("/families/join", "post", "/families/join", {"invite_code": "DEMO"}),
+        # GET /family
+        call("/family", "get", "/family", code="demo"),
+        call("/family", "get", "/family"),
+        call("/family", "get", "/family", code=WRONG),  # 2
+        # Successes and the usual errors, with the right code
+        call("/families/{family_id}", "get", f"/families/{f}", code=ok),
+        call("/families/{family_id}/members", "get", f"/families/{f}/members", code=ok),
+        call("/members/{member_id}/steps", "get", f"/members/{m}/steps", code=ok, data={"to": SEEDED_ON.isoformat()}),
+        call("/members/{member_id}/steps", "get", f"/members/{m}/steps", code=ok, data={"to": "soon"}),
+        call("/steps", "post", "/steps", steps(m), code=ok),
+        call("/steps", "post", "/steps", steps(m, []), code=ok),
+        call("/families/{family_id}/leaderboards/weekly", "get", f"/families/{f}/leaderboards/weekly", code=ok, data={"as_of": "2026-10-11"}),
+        call("/families/{family_id}/leaderboards/weekly", "get", f"/families/{f}/leaderboards/weekly", code=ok, data={"as_of": "soon"}),
+        call("/families/{family_id}/leaderboards/all-time", "get", f"/families/{f}/leaderboards/all-time", code=ok, data={"as_of": "2026-10-14"}),
+        call("/families/{family_id}/leaderboards/all-time", "get", f"/families/{f}/leaderboards/all-time", code=ok, data={"as_of": "soon"}),
+        call("/families/{family_id}/messages", "get", f"/families/{f}/messages", code=ok),
+        call("/families/{family_id}/digests", "post", f"/families/{f}/digests", {"kind": "monthly"}, code=ok),
+        call("/families/{family_id}/digests", "post", f"/families/{f}/digests", {"kind": "daily"}, code=ok),
+        call("/families/{family_id}/invite-code", "post", f"/families/{o}/invite-code", {}, code=ids["other_code"]),
+        call("/families/{family_id}/invite-code", "post", f"/families/{f}/invite-code", {}, code=ok),  # the demo's: 422
+        # Unknown family or member, with a well-formed code
+        *[call(p, meth, url.replace(f"/families/{f}", "/families/999"), body, code=ok) for p, meth, url, body in family_paths],
+        call("/members/{member_id}/steps", "get", "/members/999/steps", code=ok),
+        call("/steps", "post", "/steps", steps(999), code=ok),
+        # No code: 401
+        *[call(p, meth, url, body) for p, meth, url, body in family_paths + member_paths],
+        # Another family's code: 403 (wrong codes 3 to 11)
+        *[call(p, meth, url, body, code=WRONG) for p, meth, url, body in family_paths + member_paths],
+    ]
+    # Wrong codes so far: 11. Make it the limit, then every operation that counts them answers 429.
+    result += [call("/family", "get", "/family", code=WRONG) for _ in range(settings.WRONG_CODE_LIMIT - 11)]
+    result += [call(p, meth, url, body, code=ok) for p, meth, url, body in family_paths + member_paths]
+    result += [
+        call("/family", "get", "/family", code=ok),
+        call("/families/join", "post", "/families/join", {"invite_code": "DEMO", "name": "Late"}),
+    ]
+    return result
+
+
+def test_every_response_matches_openapi_yaml(plain_client, ids):
     problems, seen = [], set()
     for path, method, request in calls(ids):
         request = dict(request)
         url = request.pop("url")
-        response = getattr(client, method)(url, **request)
+        code = request.pop("code", None)
+        headers = {"X-Family-Code": code} if code else None
+        response = getattr(plain_client, method)(url, headers=headers, **request)
         seen.add((path, method, response.status_code))
         try:
             check_against_contract(path, method, response)

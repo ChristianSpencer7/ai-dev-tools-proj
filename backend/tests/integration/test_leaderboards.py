@@ -22,8 +22,8 @@ def demo():
     return seed_demo_family(SEEDED_ON)
 
 
-def board(client, family_id, which, **params):
-    return client.get(f"/families/{family_id}/leaderboards/{which}", params)
+def board(client, family_id, which, headers=None, **params):
+    return client.get(f"/families/{family_id}/leaderboards/{which}", params, headers=headers)
 
 
 def test_response_matches_the_contract(client, demo):
@@ -81,8 +81,9 @@ def test_get_only(client, demo):
 @pytest.mark.parametrize("which", ["weekly", "all-time"])
 def test_query_count_does_not_grow_with_the_family(client, demo, django_assert_num_queries, which):
     """One query for the family, then a fixed four for the board, however many members or days."""
+    code = {"X-Family-Code": demo.invite_code}  # given, so the test client doesn't look it up inside the count
     with django_assert_num_queries(5):
-        board(client, demo.id, which, as_of=SEEDED_ON.isoformat())
+        board(client, demo.id, which, headers=code, as_of=SEEDED_ON.isoformat())
 
     for n in range(10):
         member = Member.objects.create(family=demo, name=f"Cousin {n}")
@@ -90,7 +91,7 @@ def test_query_count_does_not_grow_with_the_family(client, demo, django_assert_n
             StepEntry(member=member, day=SEEDED_ON - timedelta(days=d), steps=5_000) for d in range(14)
         )
     with django_assert_num_queries(5):
-        response = board(client, demo.id, which, as_of=SEEDED_ON.isoformat())
+        response = board(client, demo.id, which, headers=code, as_of=SEEDED_ON.isoformat())
     assert len(response.json()["standings"]) == 14
 
 

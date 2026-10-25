@@ -23,6 +23,15 @@ def demo():
     return seed_demo_family(SEEDED_ON)
 
 
+@pytest.fixture
+def real_family():
+    """The demo's data under an ordinary code: a family whose digests do go to Discord (the Demo Family's never do)."""
+    family = seed_demo_family(SEEDED_ON)
+    family.invite_code = "SPEN23"
+    family.save(update_fields=["invite_code"])
+    return family
+
+
 class FakeDiscord:
     """Stands in for httpx.post. Set `result` to an HTTP status code, or to an exception to raise."""
 
@@ -61,8 +70,8 @@ def test_without_a_webhook_the_digest_is_only_saved(client, demo):
     assert Message.objects.get(pk=body["id"]).text == body["text"]
 
 
-def test_with_a_webhook_the_digest_is_posted(client, demo, fake_discord):
-    body = send(client, demo.id, kind="weekly", as_of=LAST_SUNDAY.isoformat()).json()
+def test_with_a_webhook_the_digest_is_posted(client, real_family, fake_discord):
+    body = send(client, real_family.id, kind="weekly", as_of=LAST_SUNDAY.isoformat()).json()
     assert body["discord_status"] == "sent"
     assert len(fake_discord.calls) == 1
     call = fake_discord.calls[0]
@@ -76,15 +85,24 @@ def test_with_a_webhook_the_digest_is_posted(client, demo, fake_discord):
     [500, 404, 429, httpx.ReadTimeout("slow"), httpx.ConnectError("down"), httpx.InvalidURL("bad")],
     ids=["server error", "webhook deleted", "rate limited", "timeout", "no connection", "bad URL"],
 )
-def test_a_failed_post_is_recorded_and_the_digest_kept(client, demo, fake_discord, caplog, result):
+def test_a_failed_post_is_recorded_and_the_digest_kept(client, real_family, fake_discord, caplog, result):
     fake_discord.result = result
     with caplog.at_level(logging.WARNING, logger="leaderboard.discord"):
-        response = send(client, demo.id, kind="weekly")
+        response = send(client, real_family.id, kind="weekly")
     assert response.status_code == 201
     assert response.json()["discord_status"] == "failed"
     assert Message.objects.filter(pk=response.json()["id"]).exists()
     assert "Discord webhook post failed" in caplog.text
     assert "SECRET-TOKEN" not in caplog.text and "discord.test" not in caplog.text  # the URL is never logged
+
+
+def test_the_demo_familys_digest_is_never_posted_even_with_a_webhook(client, demo, fake_discord):
+    """Anyone can send the Demo Family a digest (its code is public), and the webhook is a real family's channel."""
+    for _ in range(3):
+        body = send(client, demo.id, kind="weekly").json()
+        assert body["discord_status"] == "not_configured"
+    assert fake_discord.calls == []
+    assert Message.objects.filter(family=demo).count() == 3  # still saved for the Messages page
 
 
 # --- What goes into a digest ---------------------------------------------------------------------

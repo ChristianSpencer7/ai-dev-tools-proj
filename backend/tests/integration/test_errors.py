@@ -30,18 +30,19 @@ def console():
 def test_a_500_logs_its_cause_and_traceback(console):
     client = Client(raise_request_exception=False)
     down = OperationalError('connection to server at "db", port 5432 failed: Connection refused')
-    with mock.patch("leaderboard.views.Family.objects.order_by", side_effect=down):
-        response = client.get("/families")
+    with mock.patch("leaderboard.access.Family.objects.filter", side_effect=down):
+        response = client.get("/family", headers={"X-Family-Code": "DEMO"})
     assert response.status_code == 500
     log = console.getvalue()
-    assert "ERROR django.request: Internal Server Error: /families" in log
+    assert "ERROR django.request: Internal Server Error: /family" in log
     assert 'OperationalError: connection to server at "db", port 5432 failed: Connection refused' in log
     assert "Traceback (most recent call last)" in log
 
 
 def test_client_errors_are_not_logged_as_errors(console):
-    """A 404 or 422 is the client's mistake, not the server's: no error lines for those."""
+    """A 401, 404 or 422 is the client's mistake, not the server's: no error lines for those."""
     client = Client()
-    assert client.get("/families/999").status_code == 404
+    assert client.get("/families/999").status_code == 401  # no code
+    assert client.get("/families/999", headers={"X-Family-Code": "SPEN23"}).status_code == 404
     assert client.post("/families", {"name": ""}, content_type="application/json").status_code == 422
     assert "ERROR" not in console.getvalue()
