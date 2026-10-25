@@ -2,7 +2,7 @@
 
 A small backlog for building the [plan](plan.md) with a Django backend instead of FastAPI. Everything else in the plan stays the same: a React (Vite) frontend with one central API client, Postgres (SQLite for tests), `openapi.yaml` as the contract, and `docker compose up` loading demo data.
 
-**Stack:** Django 5, Django REST Framework (DRF), drf-spectacular to check the API against `openapi.yaml`, pytest-django, psycopg.
+**Stack:** Django 6.1, Django REST Framework (DRF), drf-spectacular to check the API against `openapi.yaml`, pytest-django, psycopg.
 
 **Reuse:** `leaderboard.py` (ranking, medals, callouts, message formatting) is pure Python and moves over unchanged, with its tests. `openapi.yaml`, the React frontend and the docs need no changes, apart from the backend commands and paths.
 
@@ -36,26 +36,7 @@ Progress as of 2026-10-25: all 19 tasks are done, and the app is live at <https:
 
 ## Rubric coverage
 
-Which tasks earn each course rubric criterion.
-
-| Criterion | Tasks |
-| --- | --- |
-| 1. Problem description | 18 |
-| 2. AI-assisted workflow | 17 |
-| 3. Technologies and architecture | 18 |
-| 4. Frontend (with tests) | Existing React app and tests; run instructions in 18 |
-| 5. API contract | 9 |
-| 6. Backend (with tests) | 3–7 |
-| 7. Database integration | 1, 2, 18 |
-| 8. Containerization | 10 |
-| 9. Integration tests | 13 |
-| 10. Deployment | 11 |
-| 11. CI/CD | 11, 13 |
-| 12. Agent extension pack | 12, 14 |
-| 13. Security, audit and DevOps | 15, 16, 19 |
-| 14. Reproducibility | 10, 18 |
-
-Peer reviews are also required for points but aren't repo work, so they're tracked outside this backlog.
+See [Course rubric evidence](../README.md#course-rubric-evidence) in the README.
 
 ## Tasks
 

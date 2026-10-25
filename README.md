@@ -6,6 +6,7 @@ A family wants a light, friendly competition around daily walking. Everyone has 
 
 - [What it does](#what-it-does)
 - [Try it](#try-it)
+- [Course rubric evidence](#course-rubric-evidence)
 - [Architecture](#architecture)
 - [The database in each environment](#the-database-in-each-environment)
 - [Run it with Docker](#run-it-with-docker)
@@ -42,6 +43,25 @@ On the live site, or locally after [`docker compose up`](#run-it-with-docker) at
 5. Back on **Join or create**, create your own family. You get its invite code; join it with your name, and it appears in the **Family** picker. Only this browser and the people you give the code to can see it. Under the family's code, **New invite code** replaces it, and the old one stops working.
 
 To use the admin (`/admin/`), create an account first: `docker compose exec backend python manage.py createsuperuser`.
+
+## Course rubric evidence
+
+Where each criterion of the [AI Dev Tools Zoomcamp 2026 final project](https://github.com/DataTalksClub/ai-dev-tools-zoomcamp/tree/main/project#criteria) is met, and where it isn't. The course revised its criteria on 2026-10-16; this table follows the revised version.
+
+| Criterion | Evidence | Status |
+| --- | --- | --- |
+| Problem description | [What it does](#what-it-does), and the problem and users in [product-spec.md](product-spec.md#problem) | Done |
+| Product specification | [product-spec.md](product-spec.md#acceptance-criteria), with 8 acceptance criteria. The public task tracker is [docs/backlog.md](docs/backlog.md): 19 tasks, each with a "Done when" check. [docs/ai-workflow.md](docs/ai-workflow.md#the-working-loop) shows the agent working through it one task at a time | Done |
+| Agent team | [docs/agent-team.md](docs/agent-team.md): the developer, the implementing agent, the read-only [rules reviewer](.claude/agents/leaderboard-rules-reviewer.md), the guardrail hooks and CI, and how work passes between them | Done |
+| Context management | [AGENTS.md](AGENTS.md) describes the project and links the modular docs: [spec](product-spec.md), [plan](docs/plan.md), [backlog](docs/backlog.md), [agent team](docs/agent-team.md), [AI workflow](docs/ai-workflow.md), [permissions](docs/permissions.md), [runbook](ops/runbook.md) and [AI policy](security/ai-policy.md) | Done |
+| Application | React frontend → Django REST API → Postgres ([Architecture](#architecture)). One command, `docker compose up --build`, then <http://localhost:8080> | Done |
+| Testing | Unit tests in [backend/tests/unit/](backend/tests/unit/) and integration tests in [backend/tests/integration/](backend/tests/integration/); `pytest` in `backend/` runs both (60 unit and 130 integration, all passing on 2026-10-25). Frontend tests run with `npm test`. See [Tests](#tests) | Done |
+| Containerization | [docker-compose.yml](docker-compose.yml) starts Postgres, the backend, the scheduler and the frontend with one command ([Run it with Docker](#run-it-with-docker)) | Done |
+| Deployment | Live at <https://159-89-228-242.sslip.io> (invite code `DEMO`). Server setup and rollback in [docs/deployment.md](docs/deployment.md) | Done |
+| CI/CD | [ci.yml](.github/workflows/ci.yml) runs the tests, security scans and image builds on every push and pull request, then deploys `main` and checks the live site ([runs](https://github.com/ChristianSpencer7/ai-dev-tools-proj/actions)). **Not done:** a separate dev environment with a manual promotion to production; `main` deploys straight to production | Partial |
+| Observability | Container logs: gunicorn logs every request, and unhandled errors are logged with their cause ([test_errors.py](backend/tests/integration/test_errors.py)). A read-only health report, [ops/collect.sh](ops/collect.sh). **Not done:** metrics, traces and a shared trace ID viewable in a UI | Partial |
+| Alerting on user impact | An UptimeRobot monitor checks `/api/health` every 5 minutes and emails when the site is down ([how it was set up](docs/ai-workflow.md#2026-10-25-after-task-19-discord-and-an-uptime-monitor); [what it doesn't cover](ops/runbook.md#known-gaps)) | Done |
+| On-call agent | **Not implemented.** The [runbook](ops/runbook.md), the planned-failure [drills](ops/README.md) and the redaction in [ops/redact.py](ops/redact.py) are the groundwork a responder agent would build on | Not done |
 
 ## Architecture
 

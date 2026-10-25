@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repo.
 
 ## What this is
 
-A family step leaderboard: React (Vite) frontend, Django + Django REST Framework backend, Postgres (SQLite for local runs and tests), run with `docker compose up`. It's deployed at <https://159-89-228-242.sslip.io>. Read [product-spec.md](product-spec.md) for behavior, [docs/plan.md](docs/plan.md) for the design, and [docs/backlog.md](docs/backlog.md) for what's done and what's next.
+A family step leaderboard: React (Vite) frontend, Django + Django REST Framework backend, Postgres (SQLite for local runs and tests), run with `docker compose up`. It's deployed at <https://159-89-228-242.sslip.io>. Read [product-spec.md](product-spec.md) for behavior, [docs/plan.md](docs/plan.md) for the design, and [docs/backlog.md](docs/backlog.md) for what's done and what's next. See [docs/agent-team.md](docs/agent-team.md) for who does what and how work passes between people and agents.
 
 ## Layout
 
